@@ -43,16 +43,3 @@ $$;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-
--- Helper: current caller's role, used in RLS policies
-CREATE OR REPLACE FUNCTION current_user_role()
-RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
-  SELECT role::text FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION is_office()
-RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'office'
-  );
-$$;

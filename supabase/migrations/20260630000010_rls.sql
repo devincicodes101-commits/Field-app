@@ -3,6 +3,20 @@
 -- reads/writes go through Next.js API routes using the service role key after
 -- validating jobs.client_access_token server-side, so no client RLS policies exist here.
 
+-- Role-lookup helpers (LANGUAGE sql functions are validated against the catalog at
+-- creation time, so these must live after public.profiles exists, not in 0002_functions.sql).
+CREATE OR REPLACE FUNCTION current_user_role()
+RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT role::text FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION is_office()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'office'
+  );
+$$;
+
 -- ─────────── profiles ──────────────────────────────────────────
 
 CREATE POLICY "profiles: read own"
