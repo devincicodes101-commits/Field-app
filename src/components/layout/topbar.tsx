@@ -14,10 +14,15 @@ export function Topbar({ profile }: { profile: Profile }) {
   const links =
     profile.role === "office"
       ? [
-          { href: "/dashboard", label: "Jobs" },
+          { href: "/dashboard",  label: "Jobs" },
           { href: "/contractors", label: "Contractors" },
+          { href: "/receipts",   label: "Receipts" },
         ]
-      : [{ href: "/dashboard", label: "My diary" }];
+      : [
+          { href: "/dashboard",      label: "My diary" },
+          { href: "/available-jobs", label: "Available jobs" },
+          { href: "/attendance",     label: "Attendance" },
+        ];
 
   async function handleSignOut() {
     const supabase = createClient();

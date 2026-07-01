@@ -152,6 +152,56 @@ export type Receipt = {
   updated_at: string;
 };
 
+export type ChecklistItem = {
+  id: string;
+  job_id: string;
+  label: string;
+  is_completed: boolean;
+  notes: string | null;
+  created_by: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Material = {
+  id: string;
+  job_id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  added_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttendanceLog = {
+  id: string;
+  user_id: string;
+  work_date: string;
+  clock_in: string;
+  clock_out: string | null;
+  early_leave: boolean;
+  notes: string | null;
+  created_at: string;
+};
+
+export type SiteCheckEvent = "check_in" | "check_out";
+
+export type JobSiteCheck = {
+  id: string;
+  job_id: string;
+  user_id: string;
+  event_type: SiteCheckEvent;
+  latitude: number | null;
+  longitude: number | null;
+  distance_from_site: number | null;
+  confirmed_on_site: boolean;
+  time_on_site_minutes: number | null;
+  created_at: string;
+};
+
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   quote_sent: "Quote sent",
   accepted: "Accepted",

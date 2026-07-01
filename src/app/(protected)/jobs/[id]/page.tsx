@@ -7,6 +7,9 @@ import type {
   ExtraWorkRequest,
   Profile,
   Contractor,
+  ChecklistItem,
+  Material,
+  JobSiteCheck,
 } from "@/lib/types";
 import { JobDetail } from "./job-detail";
 
@@ -37,30 +40,55 @@ export default async function JobDetailPage({
     .single<Job>();
   if (!job) notFound();
 
-  const [{ data: messages }, { data: photos }, { data: extraWork }, { data: contractors }] =
-    await Promise.all([
-      supabase
-        .from("job_messages")
-        .select("*")
-        .eq("job_id", id)
-        .order("created_at", { ascending: true })
-        .returns<JobMessage[]>(),
-      supabase
-        .from("job_photos")
-        .select("*")
-        .eq("job_id", id)
-        .order("created_at", { ascending: false })
-        .returns<JobPhoto[]>(),
-      supabase
-        .from("extra_work_requests")
-        .select("*")
-        .eq("job_id", id)
-        .order("created_at", { ascending: false })
-        .returns<ExtraWorkRequest[]>(),
-      profile.role === "office"
-        ? supabase.from("contractors").select("user_id, company_name").order("company_name")
-        : Promise.resolve({ data: [] as Pick<Contractor, "user_id" | "company_name">[] }),
-    ]);
+  const [
+    { data: messages },
+    { data: photos },
+    { data: extraWork },
+    { data: contractors },
+    { data: checklistItems },
+    { data: materials },
+    { data: siteChecks },
+  ] = await Promise.all([
+    supabase
+      .from("job_messages")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true })
+      .returns<JobMessage[]>(),
+    supabase
+      .from("job_photos")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false })
+      .returns<JobPhoto[]>(),
+    supabase
+      .from("extra_work_requests")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false })
+      .returns<ExtraWorkRequest[]>(),
+    profile.role === "office"
+      ? supabase.from("contractors").select("user_id, company_name").order("company_name")
+      : Promise.resolve({ data: [] as Pick<Contractor, "user_id" | "company_name">[] }),
+    supabase
+      .from("job_checklist_items")
+      .select("*")
+      .eq("job_id", id)
+      .order("sort_order", { ascending: true })
+      .returns<ChecklistItem[]>(),
+    supabase
+      .from("job_materials")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true })
+      .returns<Material[]>(),
+    supabase
+      .from("job_site_checks")
+      .select("*")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true })
+      .returns<JobSiteCheck[]>(),
+  ]);
 
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
@@ -79,6 +107,9 @@ export default async function JobDetailPage({
       photos={photosWithUrls}
       extraWork={extraWork ?? []}
       contractors={contractors ?? []}
+      checklistItems={checklistItems ?? []}
+      materials={materials ?? []}
+      siteChecks={siteChecks ?? []}
     />
   );
 }

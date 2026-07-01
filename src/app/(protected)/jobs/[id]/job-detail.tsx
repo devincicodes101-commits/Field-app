@@ -15,6 +15,9 @@ import {
   startJob,
 } from "./actions";
 import { CompletionWizard } from "@/components/jobs/completion-wizard";
+import { ChecklistTab } from "@/components/jobs/checklist-tab";
+import { MaterialsTab } from "@/components/jobs/materials-tab";
+import { GpsCheckin } from "@/components/jobs/gps-checkin";
 import type {
   Job,
   JobMessage,
@@ -22,6 +25,9 @@ import type {
   ExtraWorkRequest,
   Profile,
   JobStatus,
+  ChecklistItem,
+  Material,
+  JobSiteCheck,
 } from "@/lib/types";
 import { JOB_STATUS_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -91,6 +97,9 @@ export function JobDetail({
   photos,
   extraWork,
   contractors,
+  checklistItems,
+  materials,
+  siteChecks,
 }: {
   job: Job;
   profile: Profile;
@@ -98,6 +107,9 @@ export function JobDetail({
   photos: PhotoWithUrl[];
   extraWork: ExtraWorkRequest[];
   contractors: { user_id: string; company_name: string }[];
+  checklistItems: ChecklistItem[];
+  materials: Material[];
+  siteChecks: JobSiteCheck[];
 }) {
   const router = useRouter();
   const isOffice = profile.role === "office";
@@ -229,14 +241,46 @@ export function JobDetail({
         </div>
       </div>
 
+      {/* ─── Certificate link (completed jobs) ─── */}
+      {job.status === "completed" && (
+        <a
+          href={`/jobs/${job.id}/certificate`}
+          className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          View & print Certificate of Completion
+        </a>
+      )}
+
       {/* ─── Tabs ─── */}
       <Tabs defaultValue="messages">
-        <TabsList className="bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+        <TabsList className="bg-white border border-slate-200 p-1 rounded-xl shadow-sm flex-wrap h-auto gap-0.5">
           <TabsTrigger value="messages" className="rounded-lg text-sm">
             Messages
           </TabsTrigger>
           <TabsTrigger value="photos" className="rounded-lg text-sm">
             Photos
+          </TabsTrigger>
+          <TabsTrigger value="checklist" className="rounded-lg text-sm">
+            Checklist
+            {checklistItems.length > 0 && (
+              <span className="ml-1 text-[10px] font-bold bg-indigo-100 text-indigo-600 rounded-full px-1.5">
+                {checklistItems.filter(i => i.is_completed).length}/{checklistItems.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="materials" className="rounded-lg text-sm">
+            Materials
+            {materials.length > 0 && (
+              <span className="ml-1 text-[10px] font-bold bg-slate-100 text-slate-500 rounded-full px-1.5">
+                {materials.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="gps" className="rounded-lg text-sm">
+            GPS
           </TabsTrigger>
           <TabsTrigger value="extra-work" className="rounded-lg text-sm">
             Extra work
@@ -254,6 +298,18 @@ export function JobDetail({
             completionPhotos={completionPhotos}
             canUploadCompletion={isAssignedWorker}
           />
+        </TabsContent>
+
+        <TabsContent value="checklist" className="mt-3">
+          <ChecklistTab jobId={job.id} items={checklistItems} isOffice={isOffice} />
+        </TabsContent>
+
+        <TabsContent value="materials" className="mt-3">
+          <MaterialsTab jobId={job.id} materials={materials} isOffice={isOffice} />
+        </TabsContent>
+
+        <TabsContent value="gps" className="mt-3">
+          <GpsCheckin jobId={job.id} checks={siteChecks} />
         </TabsContent>
 
         <TabsContent value="extra-work" className="mt-3">

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { JOB_STATUS_LABELS, type Job, type Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { FieldWorkerTabs } from "@/components/dashboard/field-worker-tabs";
+import { LowRatingAlerts } from "@/components/dashboard/low-rating-alerts";
 
 /* ── Status maps ── */
 const STATUS_BORDER: Record<Job["status"], string> = {
@@ -352,27 +354,34 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── Divider with count ── */}
-      {list.length > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
-            {isOffice ? `${list.length} job${list.length !== 1 ? "s" : ""}` : "Assigned jobs"}
-          </span>
-          <div className="flex-1 h-px bg-slate-200" />
-        </div>
-      )}
+      {/* ── Low-rating alerts (office only) ── */}
+      {isOffice && <LowRatingAlerts jobs={list} />}
 
-      {/* ── Empty state ── */}
-      {!list.length && <EmptyState isOffice={isOffice} />}
+      {/* ── Field worker: tabbed diary ── */}
+      {!isOffice && <FieldWorkerTabs jobs={list} />}
 
-      {/* ── Jobs grid ── */}
-      {list.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map(job => (
-            <JobCard key={job.id} job={job} showClient={isOffice} />
-          ))}
-        </div>
+      {/* ── Office: jobs grid ── */}
+      {isOffice && (
+        <>
+          {/* Divider with count */}
+          {list.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+                {`${list.length} job${list.length !== 1 ? "s" : ""}`}
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+          )}
+          {!list.length && <EmptyState isOffice={isOffice} />}
+          {list.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {list.map(job => (
+                <JobCard key={job.id} job={job} showClient={isOffice} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
