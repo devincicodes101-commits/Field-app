@@ -1,4 +1,4 @@
-export type UserRole = "office" | "contractor";
+export type UserRole = "office" | "contractor" | "operative";
 
 export type JobStatus =
   | "quote_sent"
@@ -8,9 +8,11 @@ export type JobStatus =
   | "completed"
   | "cancelled";
 
-export type MessageSenderRole = "office" | "client" | "contractor";
+export type MessageSenderRole = "office" | "client" | "contractor" | "operative";
 export type PhotoKind = "client_reference" | "completion";
 export type ExtraWorkStatus = "pending" | "approved" | "rejected";
+export type CustomerSatisfaction = "excellent" | "good" | "satisfactory" | "poor";
+export type ReceiptStatus = "pending" | "approved" | "rejected";
 
 export type Profile = {
   id: string;
@@ -49,6 +51,7 @@ export type Job = {
   client_phone: string | null;
   client_access_token: string;
   contractor_id: string | null;
+  assigned_team: string | null;
   status: JobStatus;
   scheduled_date: string | null;
   quote_accepted_at: string | null;
@@ -100,6 +103,51 @@ export type ExtraWorkRequest = {
   status: ExtraWorkStatus;
   decided_by: string | null;
   decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Invoice = {
+  id: string;
+  job_id: string;
+  invoice_number: string;
+  net_amount: number;
+  vat_rate: number;
+  vat_amount: number;
+  total_amount: number;
+  status: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type JobCompletion = {
+  id: string;
+  job_id: string;
+  invoice_id: string | null;
+  completed_by: string | null;
+  operative_name: string | null;
+  customer_signature: string | null;
+  customer_satisfaction: CustomerSatisfaction | null;
+  star_rating: number | null;
+  feedback: string | null;
+  additional_comments: string | null;
+  before_after_photos: string[];
+  video_url: string | null;
+  completed_at: string;
+  created_at: string;
+};
+
+export type Receipt = {
+  id: string;
+  job_id: string;
+  submitted_by: string | null;
+  operative_name: string | null;
+  storage_path: string;
+  amount: number | null;
+  description: string | null;
+  purchase_date: string | null;
+  status: ReceiptStatus;
   created_at: string;
   updated_at: string;
 };

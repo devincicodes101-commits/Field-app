@@ -128,6 +128,124 @@ export async function updateJobStatus(jobId: string, status: JobStatus) {
   revalidatePath(`/jobs/${jobId}`);
 }
 
+export async function startJob(jobId: string) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role === "office") return { error: "Only field staff can start jobs" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ status: "in_progress" })
+    .eq("id", jobId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function assignTeam(jobId: string, teamName: string | null) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can assign teams" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ assigned_team: teamName || null })
+    .eq("id", jobId);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function submitCompletion(payload: {
+  jobId: string;
+  netAmount: number;
+  vatRate: number;
+  signature: string;
+  satisfaction: string;
+  starRating: number;
+  feedback: string;
+  additionalComments?: string;
+  photoStoragePaths: string[];
+  receipts: Array<{
+    storagePath: string;
+    amount: number;
+    description: string;
+    purchaseDate: string;
+  }>;
+}) {
+  const { supabase, user, profile } = await requireProfile();
+  if (profile.role === "office") return { error: "Office cannot submit job completions" };
+
+  const vatAmount = payload.netAmount * (payload.vatRate / 100);
+  const totalAmount = payload.netAmount + vatAmount;
+
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .insert({
+      job_id: payload.jobId,
+      net_amount: payload.netAmount,
+      vat_rate: payload.vatRate,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      status: "draft",
+      created_by: user.id,
+    })
+    .select("id, invoice_number")
+    .single();
+
+  if (invoiceError) return { error: invoiceError.message };
+
+  const { error: completionError } = await supabase.from("job_completions").insert({
+    job_id: payload.jobId,
+    invoice_id: invoice.id,
+    completed_by: user.id,
+    operative_name: profile.full_name,
+    customer_signature: payload.signature || null,
+    customer_satisfaction: payload.satisfaction,
+    star_rating: payload.starRating,
+    feedback: payload.feedback,
+    additional_comments: payload.additionalComments || null,
+    before_after_photos: payload.photoStoragePaths,
+    completed_at: new Date().toISOString(),
+  });
+
+  if (completionError) return { error: completionError.message };
+
+  if (payload.photoStoragePaths.length > 0) {
+    await supabase.from("job_photos").insert(
+      payload.photoStoragePaths.map((path) => ({
+        job_id: payload.jobId,
+        kind: "completion",
+        uploaded_by: user.id,
+        uploaded_by_name: profile.full_name,
+        storage_path: path,
+      }))
+    );
+  }
+
+  if (payload.receipts.length > 0) {
+    const { error: receiptsError } = await supabase.from("receipts").insert(
+      payload.receipts.map((r) => ({
+        job_id: payload.jobId,
+        submitted_by: user.id,
+        operative_name: profile.full_name,
+        storage_path: r.storagePath,
+        amount: r.amount,
+        description: r.description,
+        purchase_date: r.purchaseDate || null,
+      }))
+    );
+    if (receiptsError) return { error: receiptsError.message };
+  }
+
+  const { error: jobError } = await supabase
+    .from("jobs")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", payload.jobId);
+
+  if (jobError) return { error: jobError.message };
+
+  revalidatePath(`/jobs/${payload.jobId}`);
+  return { invoiceNumber: invoice.invoice_number as string };
+}
+
 // Default (unconfirmed by Paul): requires >=1 completion photo, enforced again
 // by a DB trigger (see 20260630000009_job_completion_guard.sql) in case this is bypassed.
 export async function completeJob(jobId: string, notes: string) {

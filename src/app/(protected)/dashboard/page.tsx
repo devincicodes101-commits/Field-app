@@ -38,10 +38,14 @@ export default async function DashboardPage() {
     .select("*")
     .order("scheduled_date", { ascending: true, nullsFirst: false });
 
-  const { data: jobs } = await (profile.role === "contractor"
-    ? query.eq("contractor_id", user.id)
-    : query
-  ).returns<Job[]>();
+  const filteredQuery =
+    profile.role === "contractor"
+      ? query.eq("contractor_id", user.id)
+      : profile.role === "operative"
+        ? query.eq("assigned_team", profile.full_name)
+        : query;
+
+  const { data: jobs } = await filteredQuery.returns<Job[]>();
 
   const isOffice = profile.role === "office";
 

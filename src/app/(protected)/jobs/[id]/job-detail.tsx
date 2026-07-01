@@ -11,8 +11,10 @@ import {
   rescheduleJob,
   updateJobStatus,
   assignContractor,
-  completeJob,
+  assignTeam,
+  startJob,
 } from "./actions";
+import { CompletionWizard } from "@/components/jobs/completion-wizard";
 import type {
   Job,
   JobMessage,
@@ -42,6 +44,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type PhotoWithUrl = JobPhoto & { signedUrl: string | null };
 
@@ -53,6 +56,28 @@ const STATUS_OPTIONS: JobStatus[] = [
   "completed",
   "cancelled",
 ];
+
+const STATUS_COLORS: Record<JobStatus, string> = {
+  quote_sent: "bg-sky-100 text-sky-700 border-sky-200",
+  accepted: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  scheduled: "bg-amber-100 text-amber-700 border-amber-200",
+  in_progress: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  completed: "bg-green-100 text-green-700 border-green-200",
+  cancelled: "bg-red-100 text-red-700 border-red-200",
+};
+
+function StatusPill({ status }: { status: JobStatus }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold",
+        STATUS_COLORS[status]
+      )}
+    >
+      {JOB_STATUS_LABELS[status]}
+    </span>
+  );
+}
 
 function formatDate(value: string | null) {
   if (!value) return "Not scheduled";
@@ -77,39 +102,67 @@ export function JobDetail({
   const router = useRouter();
   const isOffice = profile.role === "office";
   const isAssignedContractor = profile.role === "contractor" && job.contractor_id === profile.id;
+  const isAssignedOperative =
+    profile.role === "operative" && job.assigned_team === profile.full_name;
+  const isAssignedWorker = isAssignedContractor || isAssignedOperative;
 
   const referencePhotos = photos.filter((p) => p.kind === "client_reference");
   const completionPhotos = photos.filter((p) => p.kind === "completion");
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">{job.title}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">{job.address}</p>
-          </div>
-          <Badge>{JOB_STATUS_LABELS[job.status]}</Badge>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1 text-sm">
-            <p className="text-muted-foreground">Client</p>
-            <p>{job.client_name}</p>
-            {job.client_email && <p className="text-muted-foreground">{job.client_email}</p>}
-            {job.client_phone && <p className="text-muted-foreground">{job.client_phone}</p>}
-          </div>
-          <div className="space-y-1 text-sm">
-            <p className="text-muted-foreground">Scheduled</p>
-            <p>{formatDate(job.scheduled_date)}</p>
-            {job.total_value != null && (
-              <p className="text-muted-foreground">Quoted: £{job.total_value.toFixed(2)}</p>
-            )}
+    <div className="space-y-5">
+      {/* ─── Job Header Card ─── */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {/* Colored top bar based on status */}
+        <div
+          className="h-1.5"
+          style={{
+            background:
+              job.status === "completed"
+                ? "linear-gradient(90deg,#10b981,#34d399)"
+                : job.status === "in_progress"
+                  ? "linear-gradient(90deg,#4338ca,#818cf8)"
+                  : job.status === "cancelled"
+                    ? "linear-gradient(90deg,#ef4444,#f87171)"
+                    : "linear-gradient(90deg,#f59e0b,#fbbf24)",
+          }}
+        />
+        <div className="p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-slate-900 leading-tight">{job.title}</h1>
+              <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1">
+                <MapPinIcon />
+                {job.address}
+              </p>
+            </div>
+            <StatusPill status={job.status} />
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2 text-sm">
+            <div className="space-y-2.5">
+              <DetailRow label="Client" value={job.client_name} />
+              {job.client_email && <DetailRow label="Email" value={job.client_email} />}
+              {job.client_phone && <DetailRow label="Phone" value={job.client_phone} />}
+            </div>
+            <div className="space-y-2.5">
+              <DetailRow label="Scheduled" value={formatDate(job.scheduled_date)} />
+              {job.total_value != null && (
+                <DetailRow label="Job value" value={`£${job.total_value.toFixed(2)} + VAT`} />
+              )}
+              {job.assigned_team && (
+                <DetailRow label="Assigned team" value={job.assigned_team} />
+              )}
+            </div>
+          </div>
+
+          {/* ─── Office controls ─── */}
           {isOffice && (
-            <div className="space-y-1.5 sm:col-span-2 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
+            <div className="mt-5 pt-4 border-t border-slate-100 grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <p className="text-sm text-muted-foreground">Status</p>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Status
+                </label>
                 <Select
                   value={job.status}
                   onValueChange={async (v) => {
@@ -118,7 +171,7 @@ export function JobDetail({
                     else router.refresh();
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full bg-slate-50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -131,7 +184,9 @@ export function JobDetail({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <p className="text-sm text-muted-foreground">Contractor</p>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Contractor
+                </label>
                 <Select
                   value={job.contractor_id ?? "none"}
                   onValueChange={async (v) => {
@@ -140,7 +195,7 @@ export function JobDetail({
                     else router.refresh();
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full bg-slate-50">
                     <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
@@ -153,41 +208,55 @@ export function JobDetail({
                   </SelectContent>
                 </Select>
               </div>
+              <AssignTeamField jobId={job.id} currentTeam={job.assigned_team} />
             </div>
           )}
 
-          {isAssignedContractor && (
-            <div className="sm:col-span-2 flex flex-wrap gap-2 pt-2 border-t">
-              <RescheduleDialog jobId={job.id} currentDate={job.scheduled_date} />
-              {job.status !== "completed" && (
-                <CompleteJobDialog jobId={job.id} hasCompletionPhoto={completionPhotos.length > 0} />
+          {/* ─── Field worker action buttons ─── */}
+          {isAssignedWorker && (
+            <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+              {job.status === "scheduled" && (
+                <StartJobButton jobId={job.id} />
+              )}
+              {job.status === "in_progress" && (
+                <CompletionWizard job={job} />
+              )}
+              {isAssignedContractor && job.status !== "completed" && (
+                <RescheduleDialog jobId={job.id} currentDate={job.scheduled_date} />
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* ─── Tabs ─── */}
       <Tabs defaultValue="messages">
-        <TabsList>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="photos">Photos</TabsTrigger>
-          <TabsTrigger value="extra-work">Extra work</TabsTrigger>
+        <TabsList className="bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+          <TabsTrigger value="messages" className="rounded-lg text-sm">
+            Messages
+          </TabsTrigger>
+          <TabsTrigger value="photos" className="rounded-lg text-sm">
+            Photos
+          </TabsTrigger>
+          <TabsTrigger value="extra-work" className="rounded-lg text-sm">
+            Extra work
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="messages">
+        <TabsContent value="messages" className="mt-3">
           <MessagesPanel jobId={job.id} messages={messages} />
         </TabsContent>
 
-        <TabsContent value="photos">
+        <TabsContent value="photos" className="mt-3">
           <PhotosPanel
             jobId={job.id}
             referencePhotos={referencePhotos}
             completionPhotos={completionPhotos}
-            canUploadCompletion={isAssignedContractor}
+            canUploadCompletion={isAssignedWorker}
           />
         </TabsContent>
 
-        <TabsContent value="extra-work">
+        <TabsContent value="extra-work" className="mt-3">
           <ExtraWorkPanel
             jobId={job.id}
             requests={extraWork}
@@ -199,6 +268,106 @@ export function JobDetail({
     </div>
   );
 }
+
+/* ─── Small helper components ─── */
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-slate-400 shrink-0 w-20">{label}</span>
+      <span className="text-slate-800 font-medium">{value}</span>
+    </div>
+  );
+}
+
+function MapPinIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    </svg>
+  );
+}
+
+function StartJobButton({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleStart() {
+    setLoading(true);
+    const result = await startJob(jobId);
+    setLoading(false);
+    if (result?.error) toast.error(result.error);
+    else {
+      toast.success("Job started!");
+      router.refresh();
+    }
+  }
+
+  return (
+    <Button
+      onClick={handleStart}
+      disabled={loading}
+      size="sm"
+      className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold shadow-sm gap-1.5"
+    >
+      <span>▶</span>
+      {loading ? "Starting…" : "Start Job"}
+    </Button>
+  );
+}
+
+function AssignTeamField({ jobId, currentTeam }: { jobId: string; currentTeam: string | null }) {
+  const router = useRouter();
+  const [value, setValue] = useState(currentTeam ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const result = await assignTeam(jobId, value.trim() || null);
+    setSaving(false);
+    if (result && "error" in result) toast.error(result.error);
+    else router.refresh();
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        Assigned team
+      </label>
+      <div className="flex gap-1.5">
+        <Input
+          placeholder="Operative name"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="bg-slate-50 text-sm"
+          onKeyDown={(e) => e.key === "Enter" && handleSave()}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleSave}
+          disabled={saving}
+          className="shrink-0"
+        >
+          {saving ? "…" : "Set"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Messages panel ─── */
 
 function MessagesPanel({ jobId, messages }: { jobId: string; messages: JobMessage[] }) {
   const router = useRouter();
@@ -218,40 +387,63 @@ function MessagesPanel({ jobId, messages }: { jobId: string; messages: JobMessag
     router.refresh();
   }
 
+  const roleColor: Record<string, string> = {
+    office: "bg-indigo-100 text-indigo-700",
+    contractor: "bg-amber-100 text-amber-700",
+    operative: "bg-sky-100 text-sky-700",
+    client: "bg-emerald-100 text-emerald-700",
+  };
+
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {!messages.length && (
-            <p className="text-sm text-muted-foreground">No messages yet.</p>
-          )}
-          {messages.map((m) => (
-            <div key={m.id} className="rounded-md border p-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {m.sender_name} · {m.sender_role}
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="max-h-96 overflow-y-auto p-4 space-y-3">
+        {!messages.length && (
+          <p className="text-sm text-slate-400 py-6 text-center">No messages yet.</p>
+        )}
+        {messages.map((m) => (
+          <div key={m.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-slate-800">{m.sender_name}</span>
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    roleColor[m.sender_role] ?? "bg-slate-200 text-slate-600"
+                  )}
+                >
+                  {m.sender_role}
                 </span>
-                <span>{formatDate(m.created_at)}</span>
               </div>
-              <p className="mt-1 text-sm">{m.body}</p>
+              <span className="text-xs text-slate-400 shrink-0">{formatDate(m.created_at)}</span>
             </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write a message..."
-            rows={2}
-          />
-          <Button onClick={handleSend} disabled={sending}>
-            Send
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <p className="text-sm text-slate-700">{m.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-slate-100 p-4 flex gap-2.5">
+        <Textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write a message…"
+          rows={2}
+          className="resize-none bg-slate-50"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
+          }}
+        />
+        <Button
+          onClick={handleSend}
+          disabled={sending || !body.trim()}
+          className="self-end shrink-0"
+        >
+          Send
+        </Button>
+      </div>
+    </div>
   );
 }
+
+/* ─── Photos panel ─── */
 
 function PhotosPanel({
   jobId,
@@ -278,10 +470,9 @@ function PhotosPanel({
       return;
     }
 
-    const path = `${jobId}/completion-${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("job-photos")
-      .upload(path, file);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${jobId}/completion-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("job-photos").upload(path, file);
     if (uploadError) {
       toast.error(uploadError.message);
       setUploading(false);
@@ -303,57 +494,77 @@ function PhotosPanel({
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Client reference photos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PhotoGrid photos={referencePhotos} empty="No photos uploaded by the client yet." />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Completion photos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <PhotoGrid photos={completionPhotos} empty="No completion photos yet." />
-          {canUploadCompletion && (
-            <Input
+    <div className="space-y-4">
+      <PhotoCard
+        title="Client reference photos"
+        photos={referencePhotos}
+        empty="No photos uploaded by the client yet."
+      />
+      <PhotoCard
+        title="Completion photos"
+        photos={completionPhotos}
+        empty="No completion photos yet."
+      >
+        {canUploadCompletion && (
+          <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-xl px-4 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors mt-3">
+            <input
               type="file"
               accept="image/*"
+              className="hidden"
               disabled={uploading}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) uploadCompletionPhoto(file);
               }}
             />
-          )}
-        </CardContent>
-      </Card>
+            <span className="text-xl">📸</span>
+            <span className="text-sm font-medium text-slate-600">
+              {uploading ? "Uploading…" : "Add completion photo"}
+            </span>
+          </label>
+        )}
+      </PhotoCard>
     </div>
   );
 }
 
-function PhotoGrid({ photos, empty }: { photos: PhotoWithUrl[]; empty: string }) {
-  if (!photos.length) return <p className="text-sm text-muted-foreground">{empty}</p>;
+function PhotoCard({
+  title,
+  photos,
+  empty,
+  children,
+}: {
+  title: string;
+  photos: PhotoWithUrl[];
+  empty: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {photos.map((p) =>
-        p.signedUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={p.id}
-            src={p.signedUrl}
-            alt={p.caption ?? "Job photo"}
-            className="aspect-square rounded-md border object-cover"
-          />
-        ) : null
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <h3 className="font-semibold text-slate-800 mb-3 text-sm">{title}</h3>
+      {!photos.length ? (
+        <p className="text-sm text-slate-400">{empty}</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {photos.map((p) =>
+            p.signedUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.id}
+                src={p.signedUrl}
+                alt={p.caption ?? "Job photo"}
+                className="aspect-square rounded-xl border border-slate-200 object-cover"
+              />
+            ) : null
+          )}
+        </div>
       )}
+      {children}
     </div>
   );
 }
+
+/* ─── Extra work panel ─── */
 
 function ExtraWorkPanel({
   jobId,
@@ -373,7 +584,11 @@ function ExtraWorkPanel({
 
   async function handleSubmit() {
     setSubmitting(true);
-    const result = await requestExtraWork({ job_id: jobId, description, amount: Number(amount) });
+    const result = await requestExtraWork({
+      job_id: jobId,
+      description,
+      amount: Number(amount),
+    });
     setSubmitting(false);
     if (result && "error" in result) {
       toast.error(result.error);
@@ -390,74 +605,80 @@ function ExtraWorkPanel({
     else router.refresh();
   }
 
-  return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        {!requests.length && (
-          <p className="text-sm text-muted-foreground">No extra work requested.</p>
-        )}
-        {requests.map((r) => (
-          <div key={r.id} className="rounded-md border p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">£{r.amount.toFixed(2)}</p>
-              <Badge
-                variant={
-                  r.status === "approved"
-                    ? "default"
-                    : r.status === "rejected"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {r.status}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">{r.description}</p>
-            {canDecide && r.status === "pending" && (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleDecide(r.id, "approved")}>
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDecide(r.id, "rejected")}
-                >
-                  Reject
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
+  const statusColor = (s: string) =>
+    s === "approved"
+      ? "bg-emerald-100 text-emerald-700"
+      : s === "rejected"
+        ? "bg-red-100 text-red-700"
+        : "bg-amber-100 text-amber-700";
 
-        {canRequest && (
-          <div className="space-y-2 border-t pt-4">
-            <p className="text-sm font-medium">Request extra work</p>
-            <Textarea
-              placeholder="What extra work is needed?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="Amount (£)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !description.trim() || !amount}
-            >
-              Submit request
-            </Button>
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+      {!requests.length && (
+        <p className="text-sm text-slate-400 text-center py-4">No extra work requested.</p>
+      )}
+      {requests.map((r) => (
+        <div
+          key={r.id}
+          className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2"
+        >
+          <div className="flex items-center justify-between">
+            <p className="font-bold text-slate-900">£{r.amount.toFixed(2)}</p>
+            <span className={cn("text-xs px-2.5 py-0.5 rounded-full font-semibold", statusColor(r.status))}>
+              {r.status}
+            </span>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <p className="text-sm text-slate-600">{r.description}</p>
+          {canDecide && r.status === "pending" && (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={() => handleDecide(r.id, "approved")} className="flex-1">
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDecide(r.id, "rejected")}
+                className="flex-1"
+              >
+                Reject
+              </Button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {canRequest && (
+        <div className="border-t border-slate-100 pt-4 space-y-2.5">
+          <p className="text-sm font-semibold text-slate-700">Request extra work</p>
+          <Textarea
+            placeholder="Describe what extra work is needed…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="resize-none bg-slate-50"
+          />
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Amount (£)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="bg-slate-50"
+          />
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting || !description.trim() || !amount}
+            className="w-full"
+          >
+            {submitting ? "Submitting…" : "Submit request"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
+
+/* ─── Reschedule dialog ─── */
 
 function RescheduleDialog({
   jobId,
@@ -493,11 +714,11 @@ function RescheduleDialog({
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         Reschedule
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle>Reschedule job</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 pt-1">
           <Input
             type="datetime-local"
             value={newDate}
@@ -507,64 +728,15 @@ function RescheduleDialog({
             placeholder="Reason (optional)"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-          />
-          <Button onClick={handleSubmit} disabled={submitting || !newDate} className="w-full">
-            Confirm new date
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function CompleteJobDialog({
-  jobId,
-  hasCompletionPhoto,
-}: {
-  jobId: string;
-  hasCompletionPhoto: boolean;
-}) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit() {
-    setSubmitting(true);
-    const result = await completeJob(jobId, notes);
-    setSubmitting(false);
-    if (result && "error" in result) {
-      toast.error(result.error);
-      return;
-    }
-    setOpen(false);
-    router.refresh();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>Mark complete</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Complete job</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {!hasCompletionPhoto && (
-            <p className="text-sm text-destructive">
-              Add at least one completion photo in the Photos tab first.
-            </p>
-          )}
-          <Textarea
-            placeholder="Completion notes (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="resize-none"
           />
           <Button
             onClick={handleSubmit}
-            disabled={submitting || !hasCompletionPhoto}
+            disabled={submitting || !newDate}
             className="w-full"
           >
-            Confirm completion
+            {submitting ? "Saving…" : "Confirm new date"}
           </Button>
         </div>
       </DialogContent>
