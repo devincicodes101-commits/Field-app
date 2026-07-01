@@ -163,6 +163,7 @@ export async function submitCompletion(payload: {
   feedback: string;
   additionalComments?: string;
   photoStoragePaths: string[];
+  videoUrl?: string;
   receipts: Array<{
     storagePath: string;
     amount: number;
@@ -203,6 +204,7 @@ export async function submitCompletion(payload: {
     feedback: payload.feedback,
     additional_comments: payload.additionalComments || null,
     before_after_photos: payload.photoStoragePaths,
+    video_url: payload.videoUrl ?? null,
     completed_at: new Date().toISOString(),
   });
 

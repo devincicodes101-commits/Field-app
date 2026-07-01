@@ -1,4 +1,4 @@
-export type UserRole = "office" | "contractor" | "operative";
+export type UserRole = "office" | "contractor" | "operative" | "admin" | "telesales";
 
 export type JobStatus =
   | "quote_sent"

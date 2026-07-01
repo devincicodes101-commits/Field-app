@@ -14,15 +14,25 @@ export function Topbar({ profile }: { profile: Profile }) {
   const links =
     profile.role === "office"
       ? [
-          { href: "/dashboard",  label: "Jobs" },
-          { href: "/contractors", label: "Contractors" },
-          { href: "/receipts",   label: "Receipts" },
+          { href: "/dashboard",      label: "Jobs" },
+          { href: "/contractors",    label: "Contractors" },
+          { href: "/receipts",       label: "Receipts" },
+          { href: "/route-planning", label: "Route" },
+          { href: "/tracking",       label: "Tracking" },
+          { href: "/leaderboard",    label: "Leaderboard" },
         ]
-      : [
-          { href: "/dashboard",      label: "My diary" },
-          { href: "/available-jobs", label: "Available jobs" },
-          { href: "/attendance",     label: "Attendance" },
-        ];
+      : profile.role === "admin"
+        ? [
+            { href: "/dashboard", label: "Dashboard" },
+            { href: "/admin",     label: "Admin" },
+          ]
+        : [
+            { href: "/dashboard",      label: "My diary" },
+            { href: "/available-jobs", label: "Available" },
+            { href: "/attendance",     label: "Attendance" },
+            { href: "/tracking",       label: "Tracking" },
+            { href: "/leaderboard",    label: "Leaderboard" },
+          ];
 
   async function handleSignOut() {
     const supabase = createClient();

@@ -19,6 +19,7 @@ const STEPS = [
   { label: "Rating", description: "Star rating" },
   { label: "Feedback", description: "Customer feedback" },
   { label: "Photos", description: "Completion photos" },
+  { label: "Video", description: "Site video (optional)" },
   { label: "Receipts", description: "Expense receipts" },
 ];
 
@@ -90,6 +91,8 @@ export function CompletionWizard({ job }: { job: Job }) {
   const [feedback, setFeedback] = useState("");
   const [additionalComments, setAdditionalComments] = useState("");
   const [photos, setPhotos] = useState<WizardPhoto[]>([]);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [receipts, setReceipts] = useState<WizardReceipt[]>([]);
 
   const sigPadRef = useRef<SignatureCanvas>(null);
@@ -169,6 +172,16 @@ export function CompletionWizard({ job }: { job: Job }) {
         photoStoragePaths.push(path);
       }
 
+      let videoUrl: string | undefined;
+      if (videoFile) {
+        const ext = videoFile.name.split(".").pop() ?? "mp4";
+        const path = `${job.id}/video-${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("job-photos").upload(path, videoFile);
+        if (error) throw new Error(`Video upload failed: ${error.message}`);
+        const { data: signed } = await supabase.storage.from("job-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
+        videoUrl = signed?.signedUrl;
+      }
+
       const receiptData: {
         storagePath: string;
         amount: number;
@@ -198,6 +211,7 @@ export function CompletionWizard({ job }: { job: Job }) {
         feedback,
         additionalComments,
         photoStoragePaths,
+        videoUrl,
         receipts: receiptData,
       });
 
@@ -576,8 +590,56 @@ export function CompletionWizard({ job }: { job: Job }) {
                 </div>
               )}
 
-              {/* STEP 6 – Receipts */}
+              {/* STEP 6 – Video */}
               {step === 6 && (
+                <div className="space-y-4">
+                  <div>
+                    <SectionHeading>Site Video</SectionHeading>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Record a short walkthrough video of the completed work. Optional — skip if not needed.
+                    </p>
+                  </div>
+                  {!videoFile ? (
+                    <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-300 rounded-2xl p-10 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="video/*"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) { setVideoFile(f); setVideoPreviewUrl(URL.createObjectURL(f)); }
+                          e.target.value = "";
+                        }}
+                      />
+                      <span className="text-5xl">🎬</span>
+                      <p className="font-semibold text-slate-700">Tap to upload video</p>
+                      <p className="text-xs text-slate-400">MP4, MOV · Max recommended 100MB</p>
+                    </label>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 bg-black">
+                        <video src={videoPreviewUrl!} controls className="w-full max-h-64 object-contain" />
+                      </div>
+                      <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                        <span className="text-emerald-600">✓</span>
+                        <span className="text-sm font-medium text-emerald-700 flex-1 truncate">{videoFile.name}</span>
+                        <button
+                          onClick={() => { setVideoFile(null); setVideoPreviewUrl(null); }}
+                          className="text-xs text-rose-500 font-semibold hover:text-rose-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-center text-xs text-slate-400">
+                    No video? Tap Continue to skip this step.
+                  </p>
+                </div>
+              )}
+
+              {/* STEP 7 – Receipts */}
+              {step === 7 && (
                 <div className="space-y-4">
                   <div>
                     <SectionHeading>Expense Receipts</SectionHeading>

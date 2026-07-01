@@ -173,6 +173,14 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-slate-200" />
           </div>
 
+          {/* Quick sign in */}
+          <Link
+            href="/quick-login"
+            className="flex items-center justify-center gap-2 w-full py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 transition-all"
+          >
+            👷 Quick sign in (pick your name)
+          </Link>
+
           {/* Register link */}
           <p className="text-center text-sm text-slate-500">
             Contractor without an account?{" "}

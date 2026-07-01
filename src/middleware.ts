@@ -5,6 +5,9 @@ const PUBLIC_PATHS = [
   "/login",
   "/register",
   "/auth/callback",
+  "/quick-login",
+  "/access-denied",
+  "/offline",
   // tokenized client portal — no Supabase Auth session, authorized via job token instead
   "/client/",
 ];
@@ -60,6 +63,13 @@ export async function middleware(request: NextRequest) {
       .single();
 
     const role = profile?.role;
+
+    // Telesales role: no app access — redirect to access-denied
+    if (role === "telesales" && pathname !== "/access-denied") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/access-denied";
+      return NextResponse.redirect(url);
+    }
 
     if (role === "contractor") {
       const { data: contractor } = await supabase
