@@ -6,54 +6,238 @@ import { loginWithPassword } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(loginWithPassword, null);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Field Service App</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="min-h-screen flex">
+      {/* ── Left branding panel ── */}
+      <div className="hidden lg:flex w-[45%] relative flex-col justify-between p-12 overflow-hidden text-white"
+        style={{ background: "linear-gradient(145deg, #312e81 0%, #4338ca 45%, #6366f1 100%)" }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }} />
+        <div className="absolute bottom-0 -left-32 w-80 h-80 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #a5b4fc 0%, transparent 70%)" }} />
+        <div className="absolute top-1/2 right-0 w-64 h-64 rounded-full opacity-5"
+          style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }} />
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center shadow-inner border border-white/20">
+              <ClipboardIcon className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight">Field Service</span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-3 py-1 text-xs font-semibold text-indigo-100 backdrop-blur">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live operations platform
+            </div>
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight">
+              Manage every job,<br />
+              <span className="text-indigo-200">start to finish.</span>
+            </h1>
+            <p className="text-indigo-200 text-base leading-relaxed max-w-xs">
+              One platform for your office, contractors, and operatives — from first quote to final invoice.
+            </p>
+          </div>
+        </div>
+
+        {/* Feature list */}
+        <div className="relative z-10 space-y-4">
+          {[
+            { icon: "📋", title: "Job lifecycle", desc: "Quote → schedule → complete in one flow" },
+            { icon: "✍️", title: "Digital sign-off", desc: "Customer signatures, satisfaction & star ratings" },
+            { icon: "📄", title: "Auto invoicing", desc: "VAT invoices generated at job completion" },
+            { icon: "👥", title: "Team management", desc: "Contractors and operatives, all in sync" },
+          ].map((f) => (
+            <div key={f.title} className="flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-base shrink-0">
+                {f.icon}
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-white">{f.title}</p>
+                <p className="text-xs text-indigo-300 mt-0.5">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom stat strip */}
+        <div className="relative z-10 grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
+          {[
+            { value: "3", label: "User roles" },
+            { value: "VAT", label: "Auto invoicing" },
+            { value: "Live", label: "Job tracking" },
+          ].map((s) => (
+            <div key={s.label}>
+              <p className="text-2xl font-extrabold text-white">{s.value}</p>
+              <p className="text-xs text-indigo-300 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right form panel ── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-slate-50">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile brand (shown only on small screens) */}
+          <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md">
+              <ClipboardIcon className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-lg text-slate-900 tracking-tight">Field Service</span>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Welcome back</h2>
+            <p className="text-slate-500 text-sm mt-1">Sign in to your account to continue</p>
+          </div>
+
+          {/* Form */}
           <form action={formAction} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required autoComplete="email" />
+              <Label htmlFor="email" className="text-sm font-semibold text-slate-700">
+                Email address
+              </Label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <MailIcon className="w-4 h-4" />
+                </div>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="pl-9 bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
+                />
+              </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-              />
+              <Label htmlFor="password" className="text-sm font-semibold text-slate-700">
+                Password
+              </Label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <LockIcon className="w-4 h-4" />
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="pl-9 bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
+                />
+              </div>
             </div>
-            {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-            <Button type="submit" className="w-full" disabled={pending}>
-              {pending ? "Signing in..." : "Sign in"}
+
+            {state?.error && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                <AlertIcon className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-sm text-red-600">{state.error}</p>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm shadow-md shadow-indigo-200 transition-all"
+              disabled={pending}
+            >
+              {pending ? (
+                <span className="flex items-center gap-2">
+                  <SpinnerIcon className="w-4 h-4 animate-spin" />
+                  Signing in…
+                </span>
+              ) : (
+                "Sign in →"
+              )}
             </Button>
           </form>
 
-          <p className="text-center text-sm text-muted-foreground">
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* Register link */}
+          <p className="text-center text-sm text-slate-500">
             Contractor without an account?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Register
+            <Link
+              href="/register"
+              className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline underline-offset-2 transition-colors"
+            >
+              Register here
             </Link>
           </p>
-        </CardContent>
-      </Card>
+
+          {/* Footer note */}
+          <p className="text-center text-xs text-slate-400 mt-8">
+            Office & operative accounts are created by your administrator.
+          </p>
+        </div>
+      </div>
     </div>
+  );
+}
+
+/* ── Icon components ── */
+
+function ClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function MailIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  );
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }
