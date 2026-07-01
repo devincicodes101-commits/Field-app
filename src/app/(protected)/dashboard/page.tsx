@@ -4,56 +4,63 @@ import { Button } from "@/components/ui/button";
 import { JOB_STATUS_LABELS, type Job, type Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/* ── Status colour maps ── */
-const STATUS_LEFT_BORDER: Record<Job["status"], string> = {
+/* ── Status maps ── */
+const STATUS_BORDER: Record<Job["status"], string> = {
   quote_sent:  "border-l-sky-400",
-  accepted:    "border-l-teal-400",
+  accepted:    "border-l-teal-500",
   scheduled:   "border-l-amber-400",
   in_progress: "border-l-indigo-500",
   completed:   "border-l-emerald-500",
-  cancelled:   "border-l-red-400",
+  cancelled:   "border-l-rose-400",
+};
+
+const STATUS_PILL_BG: Record<Job["status"], string> = {
+  quote_sent:  "bg-sky-100 text-sky-700 border border-sky-200",
+  accepted:    "bg-teal-100 text-teal-700 border border-teal-200",
+  scheduled:   "bg-amber-100 text-amber-700 border border-amber-200",
+  in_progress: "bg-indigo-100 text-indigo-700 border border-indigo-200",
+  completed:   "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  cancelled:   "bg-rose-100 text-rose-700 border border-rose-200",
 };
 
 const STATUS_DOT: Record<Job["status"], string> = {
   quote_sent:  "bg-sky-400",
-  accepted:    "bg-teal-400",
+  accepted:    "bg-teal-500",
   scheduled:   "bg-amber-400",
   in_progress: "bg-indigo-500",
   completed:   "bg-emerald-500",
-  cancelled:   "bg-red-400",
+  cancelled:   "bg-rose-400",
 };
 
-const STATUS_TEXT: Record<Job["status"], string> = {
-  quote_sent:  "text-sky-700",
-  accepted:    "text-teal-700",
-  scheduled:   "text-amber-700",
-  in_progress: "text-indigo-700",
-  completed:   "text-emerald-700",
-  cancelled:   "text-red-600",
+const STATUS_CARD_TINT: Record<Job["status"], string> = {
+  quote_sent:  "from-sky-50/60",
+  accepted:    "from-teal-50/60",
+  scheduled:   "from-amber-50/60",
+  in_progress: "from-indigo-50/60",
+  completed:   "from-emerald-50/60",
+  cancelled:   "from-rose-50/60",
 };
 
-const STATUS_BG: Record<Job["status"], string> = {
-  quote_sent:  "bg-sky-50",
-  accepted:    "bg-teal-50",
-  scheduled:   "bg-amber-50",
-  in_progress: "bg-indigo-50",
-  completed:   "bg-emerald-50",
-  cancelled:   "bg-red-50",
-};
-
-function formatDate(value: string | null) {
-  if (!value) return "Not scheduled";
-  return new Date(value).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+/* ── Helpers ── */
+function isToday(dateStr: string | null) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
 }
 
-function formatTime(value: string | null) {
-  if (!value) return "";
-  return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function formatScheduled(value: string | null) {
+  if (!value) return "Not scheduled";
+  const d = new Date(value);
+  if (isToday(value)) {
+    return `Today · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    ` · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function greet(name: string) {
@@ -62,26 +69,42 @@ function greet(name: string) {
   return `${prefix}, ${name.split(" ")[0]}`;
 }
 
-/* ── Stat card ── */
+/* ── Gradient stat card ── */
 function StatCard({
   label,
   value,
-  color,
+  gradient,
   icon,
+  sub,
 }: {
   label: string;
   value: number;
-  color: string;
+  gradient: string;
   icon: React.ReactNode;
+  sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex items-center gap-4">
-      <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", color)}>
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden text-white shadow-md"
+      style={{ background: gradient }}
+    >
+      {/* Watermark icon */}
+      <div className="absolute -right-3 -bottom-4 opacity-[0.12] scale-[2.4] pointer-events-none">
         {icon}
       </div>
-      <div>
-        <p className="text-2xl font-extrabold text-slate-900 leading-none">{value}</p>
-        <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
+
+      {/* Content */}
+      <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2">
+        {label}
+      </p>
+      <p className="text-4xl font-black leading-none">{value}</p>
+      {sub && (
+        <p className="text-[11px] text-white/55 mt-1.5 font-medium">{sub}</p>
+      )}
+
+      {/* Icon badge top right */}
+      <div className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
+        {icon}
       </div>
     </div>
   );
@@ -89,92 +112,104 @@ function StatCard({
 
 /* ── Job card ── */
 function JobCard({ job, showClient }: { job: Job; showClient: boolean }) {
+  const today = isToday(job.scheduled_date);
+
   return (
-    <Link href={`/jobs/${job.id}`} className="group block">
+    <Link href={`/jobs/${job.id}`} className="group block h-full">
       <div
         className={cn(
-          "bg-white rounded-2xl border border-slate-200 border-l-4 shadow-sm",
-          "hover:shadow-md hover:border-slate-300 transition-all duration-150",
-          "h-full flex flex-col",
-          STATUS_LEFT_BORDER[job.status]
+          "relative bg-white rounded-2xl border border-slate-200 border-l-[5px] h-full flex flex-col",
+          "shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 overflow-hidden",
+          STATUS_BORDER[job.status]
         )}
       >
-        {/* Top */}
-        <div className="p-5 flex-1 space-y-3">
-          {/* Status pill */}
-          <div
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-              STATUS_BG[job.status],
-              STATUS_TEXT[job.status]
-            )}
-          >
-            <span className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[job.status])} />
-            {JOB_STATUS_LABELS[job.status]}
-          </div>
+        {/* Subtle status tint gradient at top */}
+        <div
+          className={cn(
+            "absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent pointer-events-none",
+            STATUS_CARD_TINT[job.status]
+          )}
+        />
 
-          {/* Title */}
-          <div>
-            <h3 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-indigo-700 transition-colors">
+        {/* Header */}
+        <div className="relative p-5 pb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {today && (
+              <span className="inline-flex items-center gap-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2">
+                <span className="w-1 h-1 rounded-full bg-white/70 animate-pulse" />
+                Today
+              </span>
+            )}
+            <h3 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-indigo-700 transition-colors line-clamp-2">
               {job.title}
             </h3>
             {showClient && (
-              <p className="text-xs text-slate-500 mt-0.5 font-medium">{job.client_name}</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">{job.client_name}</p>
             )}
           </div>
 
-          {/* Meta rows */}
-          <div className="space-y-1.5">
-            <MetaRow icon={<MapPinIcon />} text={job.address} />
-            {job.scheduled_date ? (
-              <MetaRow
-                icon={<CalendarIcon />}
-                text={`${formatDate(job.scheduled_date)}${formatTime(job.scheduled_date) ? ` · ${formatTime(job.scheduled_date)}` : ""}`}
-              />
-            ) : (
-              <MetaRow icon={<CalendarIcon />} text="Not scheduled" muted />
+          {/* Status pill */}
+          <div
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap",
+              STATUS_PILL_BG[job.status]
             )}
-            {job.total_value != null && (
-              <MetaRow
-                icon={<PoundIcon />}
-                text={`£${job.total_value.toLocaleString("en-GB", { minimumFractionDigits: 2 })} + VAT`}
-              />
-            )}
-            {job.assigned_team && (
-              <MetaRow icon={<TeamIcon />} text={job.assigned_team} />
-            )}
+          >
+            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_DOT[job.status])} />
+            {JOB_STATUS_LABELS[job.status]}
           </div>
         </div>
 
+        {/* Meta */}
+        <div className="relative px-5 pb-4 space-y-2 flex-1">
+          <MetaItem icon={<PinIcon />} text={job.address} />
+          <MetaItem
+            icon={<CalIcon />}
+            text={formatScheduled(job.scheduled_date)}
+            highlight={today}
+          />
+          {job.total_value != null && (
+            <MetaItem
+              icon={<PoundIcon />}
+              text={`£${job.total_value.toLocaleString("en-GB", { minimumFractionDigits: 2 })} + VAT`}
+            />
+          )}
+          {job.assigned_team && (
+            <MetaItem icon={<TeamIcon />} text={job.assigned_team} />
+          )}
+        </div>
+
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-2xl">
+          <span className="text-[11px] text-slate-400 font-medium">
             {job.completed_at
-              ? `Done ${formatDate(job.completed_at)}`
+              ? `Completed ${new Date(job.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
               : job.scheduled_date
-                ? `Scheduled ${formatDate(job.scheduled_date)}`
+                ? formatScheduled(job.scheduled_date)
                 : "Awaiting schedule"}
           </span>
-          <ChevronRightIcon className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
+          <div className="w-6 h-6 rounded-full bg-slate-200 group-hover:bg-indigo-600 flex items-center justify-center transition-colors">
+            <ChevronIcon className="w-3 h-3 text-slate-500 group-hover:text-white transition-colors" />
+          </div>
         </div>
       </div>
     </Link>
   );
 }
 
-function MetaRow({
+function MetaItem({
   icon,
   text,
-  muted,
+  highlight,
 }: {
   icon: React.ReactNode;
   text: string;
-  muted?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <div className="flex items-start gap-2">
       <span className="text-slate-400 shrink-0 mt-px">{icon}</span>
-      <span className={cn("text-xs leading-snug", muted ? "text-slate-400" : "text-slate-600")}>
+      <span className={cn("text-xs leading-snug", highlight ? "text-indigo-600 font-semibold" : "text-slate-600")}>
         {text}
       </span>
     </div>
@@ -184,21 +219,21 @@ function MetaRow({
 /* ── Empty state ── */
 function EmptyState({ isOffice }: { isOffice: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4 text-3xl">
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-5 text-4xl shadow-inner">
         📋
       </div>
-      <h3 className="font-bold text-slate-800 text-lg">
+      <h3 className="font-extrabold text-slate-800 text-xl">
         {isOffice ? "No jobs yet" : "No jobs assigned to you yet"}
       </h3>
-      <p className="text-slate-500 text-sm mt-1 max-w-xs">
+      <p className="text-slate-500 text-sm mt-2 max-w-xs leading-relaxed">
         {isOffice
-          ? "Create your first job to get started."
-          : "Jobs assigned to you will appear here."}
+          ? "Create your first job to get the workflow started."
+          : "Jobs will appear here once assigned to your team."}
       </p>
       {isOffice && (
-        <Button render={<Link href="/jobs/new" />} className="mt-5">
-          Create first job
+        <Button render={<Link href="/jobs/new" />} className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-bold px-6">
+          + Create first job
         </Button>
       )}
     </div>
@@ -208,104 +243,121 @@ function EmptyState({ isOffice }: { isOffice: boolean }) {
 /* ── Page ── */
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+    .from("profiles").select("*").eq("id", user.id).single<Profile>();
   if (!profile) return null;
 
-  const query = supabase
-    .from("jobs")
-    .select("*")
+  const baseQuery = supabase.from("jobs").select("*")
     .order("scheduled_date", { ascending: true, nullsFirst: false });
 
   const filteredQuery =
     profile.role === "contractor"
-      ? query.eq("contractor_id", user.id)
+      ? baseQuery.eq("contractor_id", user.id)
       : profile.role === "operative"
-        ? query.eq("assigned_team", profile.full_name)
-        : query;
+        ? baseQuery.eq("assigned_team", profile.full_name)
+        : baseQuery;
 
   const { data: jobs } = await filteredQuery.returns<Job[]>();
 
   const isOffice = profile.role === "office";
   const list = jobs ?? [];
 
-  /* Stats for office */
   const stats = {
     total:      list.length,
-    inProgress: list.filter((j) => j.status === "in_progress").length,
-    completed:  list.filter((j) => j.status === "completed").length,
-    pending:    list.filter((j) => ["quote_sent", "accepted", "scheduled"].includes(j.status)).length,
+    inProgress: list.filter(j => j.status === "in_progress").length,
+    completed:  list.filter(j => j.status === "completed").length,
+    pending:    list.filter(j => ["quote_sent", "accepted", "scheduled"].includes(j.status)).length,
   };
 
+  const todayCount = list.filter(j => isToday(j.scheduled_date)).length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
 
       {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-[28px] font-black text-slate-900 tracking-tight leading-tight">
             {isOffice ? greet(profile.full_name || "there") : "My diary"}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">
+          <p className="text-slate-500 text-sm mt-1">
             {isOffice
-              ? `You have ${stats.inProgress} job${stats.inProgress !== 1 ? "s" : ""} in progress`
-              : `${list.length} job${list.length !== 1 ? "s" : ""} assigned to you`}
+              ? `${stats.inProgress} job${stats.inProgress !== 1 ? "s" : ""} in progress · ${todayCount} today`
+              : `${list.length} job${list.length !== 1 ? "s" : ""} assigned · ${todayCount} today`}
           </p>
         </div>
         {isOffice && (
           <Button
             render={<Link href="/jobs/new" />}
-            className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 font-bold"
+            className="shrink-0 h-10 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 font-bold text-sm px-5"
           >
             + New job
           </Button>
         )}
       </div>
 
-      {/* ── Stats strip (office only) ── */}
+      {/* ── Stat cards ── */}
       {isOffice && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total jobs"
             value={stats.total}
-            color="bg-slate-100 text-slate-600"
+            gradient="linear-gradient(135deg, #1e293b 0%, #334155 100%)"
             icon={<GridIcon />}
           />
           <StatCard
             label="In progress"
             value={stats.inProgress}
-            color="bg-indigo-100 text-indigo-600"
+            gradient="linear-gradient(135deg, #4338ca 0%, #818cf8 100%)"
             icon={<PlayIcon />}
+            sub={stats.inProgress > 0 ? "Active on site" : "None active"}
           />
           <StatCard
             label="Completed"
             value={stats.completed}
-            color="bg-emerald-100 text-emerald-600"
+            gradient="linear-gradient(135deg, #059669 0%, #34d399 100%)"
             icon={<CheckIcon />}
+            sub={stats.completed > 0 ? "Invoiced & done" : "None yet"}
           />
           <StatCard
             label="Pending"
             value={stats.pending}
-            color="bg-amber-100 text-amber-600"
+            gradient="linear-gradient(135deg, #d97706 0%, #fbbf24 100%)"
             icon={<ClockIcon />}
+            sub={stats.pending > 0 ? "Awaiting start" : "Clear"}
           />
         </div>
       )}
 
-      {/* ── Section divider ── */}
-      {isOffice && list.length > 0 && (
+      {/* ── Field worker mini stat ── */}
+      {!isOffice && list.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
+            <p className="text-2xl font-black text-slate-900">{list.length}</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Total</p>
+          </div>
+          <div className="bg-indigo-600 rounded-2xl shadow-md p-4 text-center">
+            <p className="text-2xl font-black text-white">{todayCount}</p>
+            <p className="text-xs text-indigo-200 font-medium mt-0.5">Today</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
+            <p className="text-2xl font-black text-emerald-600">
+              {list.filter(j => j.status === "completed").length}
+            </p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Done</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Divider with count ── */}
+      {list.length > 0 && (
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            All jobs
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+            {isOffice ? `${list.length} job${list.length !== 1 ? "s" : ""}` : "Assigned jobs"}
           </span>
           <div className="flex-1 h-px bg-slate-200" />
         </div>
@@ -314,10 +366,10 @@ export default async function DashboardPage() {
       {/* ── Empty state ── */}
       {!list.length && <EmptyState isOffice={isOffice} />}
 
-      {/* ── Job grid ── */}
+      {/* ── Jobs grid ── */}
       {list.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((job) => (
+          {list.map(job => (
             <JobCard key={job.id} job={job} showClient={isOffice} />
           ))}
         </div>
@@ -326,8 +378,8 @@ export default async function DashboardPage() {
   );
 }
 
-/* ── SVG icon helpers ── */
-function MapPinIcon() {
+/* ── Icons ── */
+function PinIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -338,7 +390,7 @@ function MapPinIcon() {
   );
 }
 
-function CalendarIcon() {
+function CalIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -365,10 +417,10 @@ function TeamIcon() {
   );
 }
 
-function ChevronRightIcon({ className }: { className?: string }) {
+function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
     </svg>
   );
 }
