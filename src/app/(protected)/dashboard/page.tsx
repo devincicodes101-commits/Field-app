@@ -1,46 +1,27 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { JOB_STATUS_LABELS, type Job, type Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FieldWorkerTabs } from "@/components/dashboard/field-worker-tabs";
 import { LowRatingAlerts } from "@/components/dashboard/low-rating-alerts";
 
-/* ── Status maps ── */
-const STATUS_BORDER: Record<Job["status"], string> = {
-  quote_sent:  "border-l-sky-400",
-  accepted:    "border-l-teal-500",
-  scheduled:   "border-l-amber-400",
-  in_progress: "border-l-indigo-500",
-  completed:   "border-l-emerald-500",
-  cancelled:   "border-l-rose-400",
-};
-
-const STATUS_PILL_BG: Record<Job["status"], string> = {
-  quote_sent:  "bg-sky-100 text-sky-700 border border-sky-200",
-  accepted:    "bg-teal-100 text-teal-700 border border-teal-200",
-  scheduled:   "bg-amber-100 text-amber-700 border border-amber-200",
-  in_progress: "bg-indigo-100 text-indigo-700 border border-indigo-200",
-  completed:   "bg-emerald-100 text-emerald-700 border border-emerald-200",
-  cancelled:   "bg-rose-100 text-rose-700 border border-rose-200",
-};
-
+/* ── Status colour tokens ── */
 const STATUS_DOT: Record<Job["status"], string> = {
   quote_sent:  "bg-sky-400",
   accepted:    "bg-teal-500",
   scheduled:   "bg-amber-400",
-  in_progress: "bg-indigo-500",
+  in_progress: "bg-blue-500",
   completed:   "bg-emerald-500",
   cancelled:   "bg-rose-400",
 };
 
-const STATUS_CARD_TINT: Record<Job["status"], string> = {
-  quote_sent:  "from-sky-50/60",
-  accepted:    "from-teal-50/60",
-  scheduled:   "from-amber-50/60",
-  in_progress: "from-indigo-50/60",
-  completed:   "from-emerald-50/60",
-  cancelled:   "from-rose-50/60",
+const STATUS_TEXT: Record<Job["status"], string> = {
+  quote_sent:  "text-sky-700",
+  accepted:    "text-teal-700",
+  scheduled:   "text-amber-700",
+  in_progress: "text-blue-700",
+  completed:   "text-emerald-700",
+  cancelled:   "text-rose-600",
 };
 
 /* ── Helpers ── */
@@ -59,7 +40,7 @@ function formatScheduled(value: string | null) {
   if (!value) return "Not scheduled";
   const d = new Date(value);
   if (isToday(value)) {
-    return `Today · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+    return `Today at ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
   }
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
     ` · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
@@ -71,172 +52,113 @@ function greet(name: string) {
   return `${prefix}, ${name.split(" ")[0]}`;
 }
 
-/* ── Gradient stat card ── */
+/* ── Stat card — clean bordered, no gradient ── */
 function StatCard({
   label,
   value,
-  gradient,
-  icon,
+  accent,
   sub,
 }: {
   label: string;
   value: number;
-  gradient: string;
-  icon: React.ReactNode;
+  accent?: string;
   sub?: string;
 }) {
   return (
-    <div
-      className="relative rounded-2xl p-5 overflow-hidden text-white shadow-md"
-      style={{ background: gradient }}
-    >
-      {/* Watermark icon */}
-      <div className="absolute -right-3 -bottom-4 opacity-[0.12] scale-[2.4] pointer-events-none">
-        {icon}
-      </div>
-
-      {/* Content */}
-      <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2">
-        {label}
-      </p>
-      <p className="text-4xl font-black leading-none">{value}</p>
-      {sub && (
-        <p className="text-[11px] text-white/55 mt-1.5 font-medium">{sub}</p>
-      )}
-
-      {/* Icon badge top right */}
-      <div className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
-        {icon}
-      </div>
+    <div className="bg-white border border-slate-200 rounded-lg p-5">
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">{label}</p>
+      <p className={cn("text-3xl font-bold leading-none", accent ?? "text-slate-900")}>{value}</p>
+      {sub && <p className="text-xs text-slate-400 mt-2">{sub}</p>}
     </div>
   );
 }
 
-/* ── Job card ── */
-function JobCard({ job, showClient }: { job: Job; showClient: boolean }) {
+/* ── Job row — list-style, not card grid ── */
+function JobRow({ job, showClient }: { job: Job; showClient: boolean }) {
   const today = isToday(job.scheduled_date);
 
   return (
-    <Link href={`/jobs/${job.id}`} className="group block h-full">
-      <div
-        className={cn(
-          "relative bg-white rounded-2xl border border-slate-200 border-l-[5px] h-full flex flex-col",
-          "shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 overflow-hidden",
-          STATUS_BORDER[job.status]
+    <Link
+      href={`/jobs/${job.id}`}
+      className="group flex items-center gap-4 px-4 py-3.5 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+    >
+      {/* Status dot */}
+      <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[job.status])} />
+
+      {/* Title + client */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">
+          {job.title}
+          {today && (
+            <span className="ml-2 text-[10px] font-bold text-blue-600 bg-blue-50 rounded px-1.5 py-0.5 uppercase tracking-wide">
+              Today
+            </span>
+          )}
+        </p>
+        {showClient && (
+          <p className="text-xs text-slate-500 truncate mt-0.5">{job.client_name}</p>
         )}
-      >
-        {/* Subtle status tint gradient at top */}
-        <div
-          className={cn(
-            "absolute inset-x-0 top-0 h-20 bg-gradient-to-b to-transparent pointer-events-none",
-            STATUS_CARD_TINT[job.status]
-          )}
-        />
-
-        {/* Header */}
-        <div className="relative p-5 pb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            {today && (
-              <span className="inline-flex items-center gap-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2">
-                <span className="w-1 h-1 rounded-full bg-white/70 animate-pulse" />
-                Today
-              </span>
-            )}
-            <h3 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-indigo-700 transition-colors line-clamp-2">
-              {job.title}
-            </h3>
-            {showClient && (
-              <p className="text-xs text-slate-500 font-medium mt-0.5">{job.client_name}</p>
-            )}
-          </div>
-
-          {/* Status pill */}
-          <div
-            className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap",
-              STATUS_PILL_BG[job.status]
-            )}
-          >
-            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_DOT[job.status])} />
-            {JOB_STATUS_LABELS[job.status]}
-          </div>
-        </div>
-
-        {/* Meta */}
-        <div className="relative px-5 pb-4 space-y-2 flex-1">
-          <MetaItem icon={<PinIcon />} text={job.address} />
-          <MetaItem
-            icon={<CalIcon />}
-            text={formatScheduled(job.scheduled_date)}
-            highlight={today}
-          />
-          {job.total_value != null && (
-            <MetaItem
-              icon={<PoundIcon />}
-              text={`£${job.total_value.toLocaleString("en-GB", { minimumFractionDigits: 2 })} + VAT`}
-            />
-          )}
-          {job.assigned_team && (
-            <MetaItem icon={<TeamIcon />} text={job.assigned_team} />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-b-2xl">
-          <span className="text-[11px] text-slate-400 font-medium">
-            {job.completed_at
-              ? `Completed ${new Date(job.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
-              : job.scheduled_date
-                ? formatScheduled(job.scheduled_date)
-                : "Awaiting schedule"}
-          </span>
-          <div className="w-6 h-6 rounded-full bg-slate-200 group-hover:bg-indigo-600 flex items-center justify-center transition-colors">
-            <ChevronIcon className="w-3 h-3 text-slate-500 group-hover:text-white transition-colors" />
-          </div>
-        </div>
       </div>
-    </Link>
-  );
-}
 
-function MetaItem({
-  icon,
-  text,
-  highlight,
-}: {
-  icon: React.ReactNode;
-  text: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-2">
-      <span className="text-slate-400 shrink-0 mt-px">{icon}</span>
-      <span className={cn("text-xs leading-snug", highlight ? "text-indigo-600 font-semibold" : "text-slate-600")}>
-        {text}
+      {/* Address */}
+      <p className="hidden md:block text-xs text-slate-500 truncate max-w-[180px] shrink-0">
+        {job.address}
+      </p>
+
+      {/* Date */}
+      <p className={cn(
+        "hidden sm:block text-xs shrink-0 w-36 text-right",
+        today ? "text-blue-600 font-semibold" : "text-slate-500"
+      )}>
+        {formatScheduled(job.scheduled_date)}
+      </p>
+
+      {/* Value */}
+      {job.total_value != null && (
+        <p className="hidden lg:block text-xs font-semibold text-slate-700 shrink-0 w-24 text-right">
+          £{job.total_value.toLocaleString("en-GB", { minimumFractionDigits: 2 })}
+        </p>
+      )}
+
+      {/* Status label */}
+      <span className={cn(
+        "shrink-0 text-xs font-semibold w-20 text-right",
+        STATUS_TEXT[job.status]
+      )}>
+        {JOB_STATUS_LABELS[job.status]}
       </span>
-    </div>
+
+      {/* Arrow */}
+      <ChevronIcon className="w-4 h-4 text-slate-300 group-hover:text-blue-500 shrink-0 transition-colors" />
+    </Link>
   );
 }
 
 /* ── Empty state ── */
 function EmptyState({ isOffice }: { isOffice: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mb-5 text-4xl shadow-inner">
-        📋
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center mb-4">
+        <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
       </div>
-      <h3 className="font-extrabold text-slate-800 text-xl">
-        {isOffice ? "No jobs yet" : "No jobs assigned to you yet"}
+      <h3 className="font-semibold text-slate-700 text-base">
+        {isOffice ? "No jobs yet" : "No jobs assigned yet"}
       </h3>
-      <p className="text-slate-500 text-sm mt-2 max-w-xs leading-relaxed">
+      <p className="text-slate-500 text-sm mt-1 max-w-xs">
         {isOffice
           ? "Create your first job to get the workflow started."
           : "Jobs will appear here once assigned to your team."}
       </p>
       {isOffice && (
-        <Button render={<Link href="/jobs/new" />} className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-bold px-6">
-          + Create first job
-        </Button>
+        <Link
+          href="/jobs/new"
+          className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition-colors"
+        >
+          Create first job
+        </Link>
       )}
     </div>
   );
@@ -253,7 +175,8 @@ export default async function DashboardPage() {
   if (!profile) return null;
 
   const baseQuery = supabase.from("jobs").select("*")
-    .order("scheduled_date", { ascending: true, nullsFirst: false });
+    .order("scheduled_date", { ascending: true, nullsFirst: false })
+    .limit(50);
 
   const filteredQuery =
     profile.role === "contractor"
@@ -277,79 +200,55 @@ export default async function DashboardPage() {
   const todayCount = list.filter(j => isToday(j.scheduled_date)).length;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
 
       {/* ── Page header ── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-black text-slate-900 tracking-tight leading-tight">
+          <h1 className="text-xl font-bold text-slate-900">
             {isOffice ? greet(profile.full_name || "there") : "My diary"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-sm text-slate-500 mt-0.5">
             {isOffice
-              ? `${stats.inProgress} job${stats.inProgress !== 1 ? "s" : ""} in progress · ${todayCount} today`
+              ? `${stats.inProgress} in progress · ${todayCount} scheduled today`
               : `${list.length} job${list.length !== 1 ? "s" : ""} assigned · ${todayCount} today`}
           </p>
         </div>
         {isOffice && (
-          <Button
-            render={<Link href="/jobs/new" />}
-            className="shrink-0 h-10 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 font-bold text-sm px-5"
+          <Link
+            href="/jobs/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition-colors"
           >
-            + New job
-          </Button>
+            <PlusIcon />
+            New job
+          </Link>
         )}
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* ── Office stat cards ── */}
       {isOffice && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Total jobs"
-            value={stats.total}
-            gradient="linear-gradient(135deg, #1e293b 0%, #334155 100%)"
-            icon={<GridIcon />}
-          />
-          <StatCard
-            label="In progress"
-            value={stats.inProgress}
-            gradient="linear-gradient(135deg, #4338ca 0%, #818cf8 100%)"
-            icon={<PlayIcon />}
-            sub={stats.inProgress > 0 ? "Active on site" : "None active"}
-          />
-          <StatCard
-            label="Completed"
-            value={stats.completed}
-            gradient="linear-gradient(135deg, #059669 0%, #34d399 100%)"
-            icon={<CheckIcon />}
-            sub={stats.completed > 0 ? "Invoiced & done" : "None yet"}
-          />
-          <StatCard
-            label="Pending"
-            value={stats.pending}
-            gradient="linear-gradient(135deg, #d97706 0%, #fbbf24 100%)"
-            icon={<ClockIcon />}
-            sub={stats.pending > 0 ? "Awaiting start" : "Clear"}
-          />
+          <StatCard label="Total jobs"  value={stats.total}      />
+          <StatCard label="In progress" value={stats.inProgress} accent="text-blue-600"    sub={stats.inProgress > 0 ? "Active on site" : undefined} />
+          <StatCard label="Completed"   value={stats.completed}  accent="text-emerald-600" sub={stats.completed > 0 ? "Invoiced & done" : undefined} />
+          <StatCard label="Pending"     value={stats.pending}    accent="text-amber-600"   sub={stats.pending > 0 ? "Awaiting start" : undefined} />
         </div>
       )}
 
-      {/* ── Field worker mini stat ── */}
+      {/* ── Field worker mini stats ── */}
       {!isOffice && list.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
-            <p className="text-2xl font-black text-slate-900">{list.length}</p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Total</p>
+          <div className="bg-white border border-slate-200 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-slate-900">{list.length}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Total</p>
           </div>
-          <div className="bg-indigo-600 rounded-2xl shadow-md p-4 text-center">
-            <p className="text-2xl font-black text-white">{todayCount}</p>
-            <p className="text-xs text-indigo-200 font-medium mt-0.5">Today</p>
+          <div className="bg-blue-600 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-white">{todayCount}</p>
+            <p className="text-xs text-blue-200 mt-0.5">Today</p>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-center">
-            <p className="text-2xl font-black text-emerald-600">
-              {list.filter(j => j.status === "completed").length}
-            </p>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Done</p>
+          <div className="bg-white border border-slate-200 rounded-lg p-4 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{list.filter(j => j.status === "completed").length}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Done</p>
           </div>
         </div>
       )}
@@ -357,27 +256,28 @@ export default async function DashboardPage() {
       {/* ── Low-rating alerts (office only) ── */}
       {isOffice && <LowRatingAlerts jobs={list} />}
 
-      {/* ── Field worker: tabbed diary ── */}
+      {/* ── Field worker tabbed diary ── */}
       {!isOffice && <FieldWorkerTabs jobs={list} />}
 
-      {/* ── Office: jobs grid ── */}
+      {/* ── Office jobs list ── */}
       {isOffice && (
         <>
-          {/* Divider with count */}
+          {!list.length && <EmptyState isOffice />}
           {list.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
-                {`${list.length} job${list.length !== 1 ? "s" : ""}`}
-              </span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-          )}
-          {!list.length && <EmptyState isOffice={isOffice} />}
-          {list.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+              {/* Table header */}
+              <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <span className="w-2 shrink-0" />
+                <span className="flex-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Job</span>
+                <span className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wide max-w-[180px] shrink-0">Address</span>
+                <span className="hidden sm:block text-[11px] font-semibold text-slate-400 uppercase tracking-wide w-36 text-right shrink-0">Scheduled</span>
+                <span className="hidden lg:block text-[11px] font-semibold text-slate-400 uppercase tracking-wide w-24 text-right shrink-0">Value</span>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide w-20 text-right shrink-0">Status</span>
+                <span className="w-4 shrink-0" />
+              </div>
+
               {list.map(job => (
-                <JobCard key={job.id} job={job} showClient={isOffice} />
+                <JobRow key={job.id} job={job} showClient={isOffice} />
               ))}
             </div>
           )}
@@ -388,40 +288,10 @@ export default async function DashboardPage() {
 }
 
 /* ── Icons ── */
-function PinIcon() {
+function PlusIcon() {
   return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
-
-function CalIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function PoundIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M15 8a3 3 0 10-6 0v5H7m2 0h6m-6 4h8" />
-    </svg>
-  );
-}
-
-function TeamIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" />
     </svg>
   );
 }
@@ -430,44 +300,6 @@ function ChevronIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-    </svg>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }

@@ -1,0 +1,20 @@
+-- Performance indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_jobs_status              ON public.jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_scheduled_date      ON public.jobs(scheduled_date DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_jobs_contractor_id       ON public.jobs(contractor_id) WHERE contractor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_assigned_team       ON public.jobs(assigned_team) WHERE assigned_team IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_jobs_created_by          ON public.jobs(created_by);
+CREATE INDEX IF NOT EXISTS idx_job_messages_job_id      ON public.job_messages(job_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_job_photos_job_id        ON public.job_photos(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_completions_job_id   ON public.job_completions(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_completions_by       ON public.job_completions(completed_by);
+CREATE INDEX IF NOT EXISTS idx_job_completions_rating   ON public.job_completions(star_rating) WHERE star_rating IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_job_id          ON public.invoices(job_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_status          ON public.receipts(status);
+CREATE INDEX IF NOT EXISTS idx_receipts_job_id          ON public.receipts(job_id);
+CREATE INDEX IF NOT EXISTS idx_checklist_job_id         ON public.job_checklist_items(job_id, sort_order ASC);
+CREATE INDEX IF NOT EXISTS idx_materials_job_id         ON public.job_materials(job_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_user_date     ON public.attendance_logs(user_id, work_date DESC);
+CREATE INDEX IF NOT EXISTS idx_site_checks_job_user     ON public.job_site_checks(job_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_profiles_role            ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS idx_extra_work_job_id        ON public.extra_work_requests(job_id);
