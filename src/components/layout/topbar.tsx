@@ -48,23 +48,35 @@ export function Topbar({ profile }: { profile: Profile }) {
     telesales:  "Telesales",
   };
 
+  /* role badge color */
+  const roleBadge: Record<string, string> = {
+    office:     "bg-primary/15 text-primary",
+    contractor: "bg-amber-400/15 text-amber-400",
+    operative:  "bg-emerald-400/15 text-emerald-400",
+    admin:      "bg-purple-400/15 text-purple-400",
+    telesales:  "bg-rose-400/15 text-rose-400",
+  };
+
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
+    <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="flex items-center justify-between px-4 lg:px-6 h-14">
 
         {/* Brand */}
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center">
-              <ClipboardIcon className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_16px_oklch(0.56_0.24_266/0.5)]">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
-            <span className="font-semibold text-slate-900 text-[15px] tracking-tight hidden sm:block">
+            <span className="font-bold text-foreground text-[15px] tracking-tight hidden sm:block">
               Field Service
             </span>
           </div>
 
           {/* Nav */}
-          <nav className="flex items-stretch h-14 gap-1">
+          <nav className="flex items-stretch h-14 gap-0.5">
             {links.map((link) => {
               const active = pathname === link.href || pathname.startsWith(link.href + "/");
               return (
@@ -72,15 +84,15 @@ export function Topbar({ profile }: { profile: Profile }) {
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "relative flex items-center px-3 text-sm transition-colors",
+                    "relative flex items-center px-3.5 text-sm font-medium transition-colors",
                     active
-                      ? "text-slate-900 font-semibold"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {link.label}
                   {active && (
-                    <span className="absolute bottom-0 inset-x-3 h-0.5 bg-blue-600 rounded-t-full" />
+                    <span className="absolute bottom-0 inset-x-3.5 h-[2px] bg-primary rounded-t shadow-[0_0_8px_oklch(0.56_0.24_266/0.8)]" />
                   )}
                 </Link>
               );
@@ -88,35 +100,27 @@ export function Topbar({ profile }: { profile: Profile }) {
           </nav>
         </div>
 
-        {/* Right side */}
+        {/* Right */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-900 leading-tight">
-                {profile.full_name || profile.email}
-              </p>
-              <p className="text-xs text-slate-500 leading-tight">
-                {roleLabel[profile.role] ?? profile.role}
-              </p>
-            </div>
+          <div className="hidden sm:flex flex-col items-end gap-0.5">
+            <span className="text-sm font-semibold text-foreground leading-tight">
+              {profile.full_name || profile.email}
+            </span>
+            <span className={cn(
+              "text-[11px] font-semibold px-2 py-px rounded-full leading-tight",
+              roleBadge[profile.role] ?? "bg-muted text-muted-foreground"
+            )}>
+              {roleLabel[profile.role] ?? profile.role}
+            </span>
           </div>
           <button
             onClick={handleSignOut}
-            className="text-xs font-medium text-slate-500 hover:text-slate-800 border border-slate-200 hover:border-slate-300 rounded px-3 py-1.5 transition-colors"
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground border border-border hover:border-primary/40 rounded-lg px-3 py-1.5 transition-colors"
           >
             Sign out
           </button>
         </div>
       </div>
     </header>
-  );
-}
-
-function ClipboardIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
   );
 }

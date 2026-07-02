@@ -24,7 +24,7 @@ export default async function ProtectedLayout({
   if (!profile) redirect("/login");
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-background">
       <Topbar profile={profile} />
       <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8 max-w-6xl mx-auto w-full">
         {children}
