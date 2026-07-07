@@ -223,10 +223,15 @@ export function JobDetail({
             </div>
           )}
 
-          {/* ─── Send quote email (office only) ─── */}
-          {isOffice && job.client_email && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <SendQuoteEmailButton jobId={job.id} clientEmail={job.client_email} />
+          {/* ─── Office action bar ─── */}
+          {isOffice && (
+            <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-3">
+              {job.status !== "completed" && (
+                <RescheduleDialog jobId={job.id} currentDate={job.scheduled_date} />
+              )}
+              {job.client_email && (
+                <SendQuoteEmailButton jobId={job.id} clientEmail={job.client_email} />
+              )}
             </div>
           )}
 
