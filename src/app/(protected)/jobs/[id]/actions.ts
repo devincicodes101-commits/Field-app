@@ -11,7 +11,7 @@ import {
   type RescheduleInsert,
 } from "@/lib/schemas/jobs";
 import type { JobStatus } from "@/lib/types";
-import { sendQuoteEmailToClient } from "@/lib/email";
+import { sendQuoteEmailToClient, sendMessageNotificationToClient } from "@/lib/email";
 
 async function requireProfile() {
   const supabase = await createClient();
@@ -36,15 +36,39 @@ export async function sendMessage(values: MessageInsert) {
 
   const { supabase, user, profile } = await requireProfile();
 
+  const senderName = profile.full_name || profile.email;
+
   const { error } = await supabase.from("job_messages").insert({
     job_id: parsed.data.job_id,
     sender_role: profile.role,
     sender_id: user.id,
-    sender_name: profile.full_name || profile.email,
+    sender_name: senderName,
     body: parsed.data.body,
   });
 
   if (error) return { error: error.message };
+
+  // Email the client a notification so they know to check their portal
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("title, client_name, client_email, client_access_token")
+    .eq("id", parsed.data.job_id)
+    .single();
+
+  if (job?.client_email) {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const portalUrl = `${baseUrl}/client/${job.client_access_token}`;
+    // Fire and forget — don't block the message send if email fails
+    sendMessageNotificationToClient({
+      clientName: job.client_name,
+      clientEmail: job.client_email,
+      senderName,
+      jobTitle: job.title,
+      messageBody: parsed.data.body,
+      portalUrl,
+    }).catch(() => null);
+  }
+
   revalidatePath(`/jobs/${parsed.data.job_id}`);
 }
 
