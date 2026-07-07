@@ -9,6 +9,7 @@ import {
   requestExtraWork,
   decideExtraWork,
   rescheduleJob,
+  sendQuoteEmail,
   updateJobStatus,
   assignContractor,
   assignTeam,
@@ -33,8 +34,6 @@ import { JOB_STATUS_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -64,12 +63,12 @@ const STATUS_OPTIONS: JobStatus[] = [
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  quote_sent: "bg-sky-100 text-sky-700 border-sky-200",
-  accepted: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  scheduled: "bg-amber-100 text-amber-700 border-amber-200",
-  in_progress: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  completed: "bg-green-100 text-green-700 border-green-200",
-  cancelled: "bg-red-100 text-red-700 border-red-200",
+  quote_sent:  "bg-sky-400/15 text-sky-400 border-sky-400/30",
+  accepted:    "bg-teal-400/15 text-teal-400 border-teal-400/30",
+  scheduled:   "bg-amber-400/15 text-amber-400 border-amber-400/30",
+  in_progress: "bg-primary/15 text-primary border-primary/30",
+  completed:   "bg-emerald-400/15 text-emerald-400 border-emerald-400/30",
+  cancelled:   "bg-rose-400/15 text-rose-400 border-rose-400/30",
 };
 
 function StatusPill({ status }: { status: JobStatus }) {
@@ -124,7 +123,7 @@ export function JobDetail({
   return (
     <div className="space-y-5">
       {/* ─── Job Header Card ─── */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         {/* Colored top bar based on status */}
         <div
           className="h-1.5"
@@ -142,8 +141,8 @@ export function JobDetail({
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-900 leading-tight">{job.title}</h1>
-              <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-1">
+              <h1 className="text-xl font-bold text-foreground leading-tight">{job.title}</h1>
+              <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
                 <MapPinIcon />
                 {job.address}
               </p>
@@ -170,9 +169,9 @@ export function JobDetail({
 
           {/* ─── Office controls ─── */}
           {isOffice && (
-            <div className="mt-5 pt-4 border-t border-slate-100 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 pt-4 border-t border-border grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Status
                 </label>
                 <Select
@@ -183,7 +182,7 @@ export function JobDetail({
                     else router.refresh();
                   }}
                 >
-                  <SelectTrigger className="w-full bg-slate-50">
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -196,7 +195,7 @@ export function JobDetail({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Contractor
                 </label>
                 <Select
@@ -207,7 +206,7 @@ export function JobDetail({
                     else router.refresh();
                   }}
                 >
-                  <SelectTrigger className="w-full bg-slate-50">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
@@ -224,9 +223,16 @@ export function JobDetail({
             </div>
           )}
 
+          {/* ─── Send quote email (office only) ─── */}
+          {isOffice && job.client_email && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <SendQuoteEmailButton jobId={job.id} clientEmail={job.client_email} />
+            </div>
+          )}
+
           {/* ─── Field worker action buttons ─── */}
           {isAssignedWorker && (
-            <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+            <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-2">
               {job.status === "scheduled" && (
                 <StartJobButton jobId={job.id} />
               )}
@@ -245,7 +251,7 @@ export function JobDetail({
       {job.status === "completed" && (
         <a
           href={`/jobs/${job.id}/certificate`}
-          className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+          className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -256,7 +262,7 @@ export function JobDetail({
 
       {/* ─── Tabs ─── */}
       <Tabs defaultValue="messages">
-        <TabsList className="bg-white border border-slate-200 p-1 rounded-xl shadow-sm flex-wrap h-auto gap-0.5">
+        <TabsList className="bg-card border border-border p-1 rounded-xl flex-wrap h-auto gap-0.5">
           <TabsTrigger value="messages" className="rounded-lg text-sm">
             Messages
           </TabsTrigger>
@@ -266,7 +272,7 @@ export function JobDetail({
           <TabsTrigger value="checklist" className="rounded-lg text-sm">
             Checklist
             {checklistItems.length > 0 && (
-              <span className="ml-1 text-[10px] font-bold bg-indigo-100 text-indigo-600 rounded-full px-1.5">
+              <span className="ml-1 text-[10px] font-bold bg-primary/15 text-primary rounded-full px-1.5">
                 {checklistItems.filter(i => i.is_completed).length}/{checklistItems.length}
               </span>
             )}
@@ -274,7 +280,7 @@ export function JobDetail({
           <TabsTrigger value="materials" className="rounded-lg text-sm">
             Materials
             {materials.length > 0 && (
-              <span className="ml-1 text-[10px] font-bold bg-slate-100 text-slate-500 rounded-full px-1.5">
+              <span className="ml-1 text-[10px] font-bold bg-secondary text-muted-foreground rounded-full px-1.5">
                 {materials.length}
               </span>
             )}
@@ -330,8 +336,8 @@ export function JobDetail({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2">
-      <span className="text-slate-400 shrink-0 w-20">{label}</span>
-      <span className="text-slate-800 font-medium">{value}</span>
+      <span className="text-muted-foreground shrink-0 w-20">{label}</span>
+      <span className="text-foreground font-medium">{value}</span>
     </div>
   );
 }
@@ -383,6 +389,45 @@ function StartJobButton({ jobId }: { jobId: string }) {
   );
 }
 
+function SendQuoteEmailButton({ jobId, clientEmail }: { jobId: string; clientEmail: string }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleSend() {
+    setSending(true);
+    const result = await sendQuoteEmail(jobId);
+    setSending(false);
+    if (result && "error" in result) {
+      toast.error(result.error);
+    } else {
+      setSent(true);
+      toast.success(`Quote email sent to ${clientEmail}`);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleSend}
+        disabled={sending || sent}
+        className={cn(
+          "gap-2 font-semibold transition-all",
+          sent && "border-emerald-500/40 text-emerald-400"
+        )}
+      >
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        {sending ? "Sending…" : sent ? "Email sent" : "Send quote to client"}
+      </Button>
+      <span className="text-xs text-muted-foreground truncate">{clientEmail}</span>
+    </div>
+  );
+}
+
 function AssignTeamField({ jobId, currentTeam }: { jobId: string; currentTeam: string | null }) {
   const router = useRouter();
   const [value, setValue] = useState(currentTeam ?? "");
@@ -398,7 +443,7 @@ function AssignTeamField({ jobId, currentTeam }: { jobId: string; currentTeam: s
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
         Assigned team
       </label>
       <div className="flex gap-1.5">
@@ -406,7 +451,7 @@ function AssignTeamField({ jobId, currentTeam }: { jobId: string; currentTeam: s
           placeholder="Operative name"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="bg-slate-50 text-sm"
+          className="text-sm"
           onKeyDown={(e) => e.key === "Enter" && handleSave()}
         />
         <Button
@@ -444,45 +489,45 @@ function MessagesPanel({ jobId, messages }: { jobId: string; messages: JobMessag
   }
 
   const roleColor: Record<string, string> = {
-    office: "bg-indigo-100 text-indigo-700",
-    contractor: "bg-amber-100 text-amber-700",
-    operative: "bg-sky-100 text-sky-700",
-    client: "bg-emerald-100 text-emerald-700",
+    office:     "bg-primary/15 text-primary",
+    contractor: "bg-amber-400/15 text-amber-400",
+    operative:  "bg-sky-400/15 text-sky-400",
+    client:     "bg-emerald-400/15 text-emerald-400",
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="max-h-96 overflow-y-auto p-4 space-y-3">
         {!messages.length && (
-          <p className="text-sm text-slate-400 py-6 text-center">No messages yet.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No messages yet.</p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+          <div key={m.id} className="rounded-xl border border-border bg-secondary/50 p-3.5">
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-slate-800">{m.sender_name}</span>
+                <span className="font-semibold text-sm text-foreground">{m.sender_name}</span>
                 <span
                   className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-medium",
-                    roleColor[m.sender_role] ?? "bg-slate-200 text-slate-600"
+                    roleColor[m.sender_role] ?? "bg-secondary text-muted-foreground"
                   )}
                 >
                   {m.sender_role}
                 </span>
               </div>
-              <span className="text-xs text-slate-400 shrink-0">{formatDate(m.created_at)}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{formatDate(m.created_at)}</span>
             </div>
-            <p className="text-sm text-slate-700">{m.body}</p>
+            <p className="text-sm text-muted-foreground">{m.body}</p>
           </div>
         ))}
       </div>
-      <div className="border-t border-slate-100 p-4 flex gap-2.5">
+      <div className="border-t border-border p-4 flex gap-2.5">
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a message…"
           rows={2}
-          className="resize-none bg-slate-50"
+          className="resize-none"
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
           }}
@@ -562,7 +607,7 @@ function PhotosPanel({
         empty="No completion photos yet."
       >
         {canUploadCompletion && (
-          <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-xl px-4 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors mt-3">
+          <label className="flex items-center gap-2 border border-dashed border-border rounded-xl px-4 py-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors mt-3">
             <input
               type="file"
               accept="image/*"
@@ -573,8 +618,11 @@ function PhotosPanel({
                 if (file) uploadCompletionPhoto(file);
               }}
             />
-            <span className="text-xl">📸</span>
-            <span className="text-sm font-medium text-slate-600">
+            <svg className="w-5 h-5 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-sm font-medium text-muted-foreground">
               {uploading ? "Uploading…" : "Add completion photo"}
             </span>
           </label>
@@ -596,10 +644,10 @@ function PhotoCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-      <h3 className="font-semibold text-slate-800 mb-3 text-sm">{title}</h3>
+    <div className="bg-card rounded-xl border border-border p-5">
+      <h3 className="font-semibold text-foreground mb-3 text-sm">{title}</h3>
       {!photos.length ? (
-        <p className="text-sm text-slate-400">{empty}</p>
+        <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {photos.map((p) =>
@@ -609,7 +657,7 @@ function PhotoCard({
                 key={p.id}
                 src={p.signedUrl}
                 alt={p.caption ?? "Job photo"}
-                className="aspect-square rounded-xl border border-slate-200 object-cover"
+                className="aspect-square rounded-xl border border-border object-cover"
               />
             ) : null
           )}
@@ -663,28 +711,28 @@ function ExtraWorkPanel({
 
   const statusColor = (s: string) =>
     s === "approved"
-      ? "bg-emerald-100 text-emerald-700"
+      ? "bg-emerald-400/15 text-emerald-400"
       : s === "rejected"
-        ? "bg-red-100 text-red-700"
-        : "bg-amber-100 text-amber-700";
+        ? "bg-rose-400/15 text-rose-400"
+        : "bg-amber-400/15 text-amber-400";
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+    <div className="bg-card rounded-xl border border-border p-5 space-y-4">
       {!requests.length && (
-        <p className="text-sm text-slate-400 text-center py-4">No extra work requested.</p>
+        <p className="text-sm text-muted-foreground text-center py-4">No extra work requested.</p>
       )}
       {requests.map((r) => (
         <div
           key={r.id}
-          className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2"
+          className="rounded-xl border border-border bg-secondary/50 p-4 space-y-2"
         >
           <div className="flex items-center justify-between">
-            <p className="font-bold text-slate-900">£{r.amount.toFixed(2)}</p>
+            <p className="font-bold text-foreground">£{r.amount.toFixed(2)}</p>
             <span className={cn("text-xs px-2.5 py-0.5 rounded-full font-semibold", statusColor(r.status))}>
               {r.status}
             </span>
           </div>
-          <p className="text-sm text-slate-600">{r.description}</p>
+          <p className="text-sm text-muted-foreground">{r.description}</p>
           {canDecide && r.status === "pending" && (
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={() => handleDecide(r.id, "approved")} className="flex-1">
@@ -704,14 +752,14 @@ function ExtraWorkPanel({
       ))}
 
       {canRequest && (
-        <div className="border-t border-slate-100 pt-4 space-y-2.5">
-          <p className="text-sm font-semibold text-slate-700">Request extra work</p>
+        <div className="border-t border-border pt-4 space-y-2.5">
+          <p className="text-sm font-semibold text-foreground">Request extra work</p>
           <Textarea
             placeholder="Describe what extra work is needed…"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="resize-none bg-slate-50"
+            className="resize-none"
           />
           <Input
             type="number"
@@ -719,7 +767,6 @@ function ExtraWorkPanel({
             placeholder="Amount (£)"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="bg-slate-50"
           />
           <Button
             onClick={handleSubmit}

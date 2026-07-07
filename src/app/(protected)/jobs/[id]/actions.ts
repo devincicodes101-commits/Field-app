@@ -11,6 +11,7 @@ import {
   type RescheduleInsert,
 } from "@/lib/schemas/jobs";
 import type { JobStatus } from "@/lib/types";
+import { sendQuoteEmailToClient } from "@/lib/email";
 
 async function requireProfile() {
   const supabase = await createClient();
@@ -87,7 +88,7 @@ export async function rescheduleJob(values: RescheduleInsert, oldDate: string | 
   const parsed = rescheduleInsertSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid date" };
 
-  const { supabase, user } = await requireProfile();
+  const { supabase, user, profile } = await requireProfile();
 
   const { error: logError } = await supabase.from("job_reschedules").insert({
     job_id: parsed.data.job_id,
@@ -104,7 +105,52 @@ export async function rescheduleJob(values: RescheduleInsert, oldDate: string | 
     .eq("id", parsed.data.job_id);
   if (jobError) return { error: jobError.message };
 
+  // Auto-post to job thread so office sees the change without manually checking
+  const newDateStr = new Date(parsed.data.new_date).toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const autoMsg = parsed.data.reason
+    ? `Job rescheduled to ${newDateStr}. Reason: ${parsed.data.reason}`
+    : `Job rescheduled to ${newDateStr}.`;
+  await supabase.from("job_messages").insert({
+    job_id: parsed.data.job_id,
+    sender_role: profile.role,
+    sender_id: user.id,
+    sender_name: profile.full_name || profile.email,
+    body: `[Reschedule] ${autoMsg}`,
+  });
+
   revalidatePath(`/jobs/${parsed.data.job_id}`);
+  revalidatePath("/dashboard");
+}
+
+export async function sendQuoteEmail(jobId: string) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can send quote emails" };
+
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("title, client_name, client_email, client_access_token")
+    .eq("id", jobId)
+    .single();
+
+  if (!job) return { error: "Job not found" };
+  if (!job.client_email) return { error: "This job has no client email address" };
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const portalUrl = `${baseUrl}/client/${job.client_access_token}`;
+
+  try {
+    await sendQuoteEmailToClient({
+      clientName: job.client_name,
+      clientEmail: job.client_email,
+      jobTitle: job.title,
+      portalUrl,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send email" };
+  }
 }
 
 export async function assignContractor(jobId: string, contractorUserId: string | null) {
