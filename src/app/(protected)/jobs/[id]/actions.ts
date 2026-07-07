@@ -155,7 +155,7 @@ export async function sendQuoteEmail(jobId: string) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("title, client_name, client_email, client_access_token")
+    .select("title, address, client_name, client_email, client_access_token, total_value")
     .eq("id", jobId)
     .single();
 
@@ -165,12 +165,22 @@ export async function sendQuoteEmail(jobId: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const portalUrl = `${baseUrl}/client/${job.client_access_token}`;
 
+  const net = Number(job.total_value ?? 0);
+  const vat = net * 0.2;
+  const total = net + vat;
+  const quoteNumber = "QT-" + String(job.client_access_token).slice(0, 8).toUpperCase();
+
   try {
     await sendQuoteEmailToClient({
       clientName: job.client_name,
       clientEmail: job.client_email,
       jobTitle: job.title,
       portalUrl,
+      quoteNumber,
+      address: job.address,
+      netAmount: net,
+      vatAmount: vat,
+      totalAmount: total,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to send email" };
