@@ -25,27 +25,38 @@ const STATUS_TEXT: Record<Job["status"], string> = {
 };
 
 /* ── Helpers ── */
+// Business day is the UK working day, regardless of where the office user sits.
+const TZ = "Europe/London";
+
+function londonDate(value: string | number | Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
 function isToday(dateStr: string | null) {
   if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear();
+  return londonDate(dateStr) === londonDate(new Date());
 }
 
 function formatScheduled(value: string | null) {
   if (!value) return "—";
   const d = new Date(value);
+  const time = d.toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
   if (isToday(value)) {
-    return `Today · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+    return `Today · ${time}`;
   }
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
-    ` · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+  return d.toLocaleDateString("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }) +
+    ` · ${time}`;
 }
 
 function greet(name: string) {
-  const h = new Date().getHours();
+  const h = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }).format(new Date())
+  );
   const prefix = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   return `${prefix}, ${name.split(" ")[0]} 👋`;
 }
