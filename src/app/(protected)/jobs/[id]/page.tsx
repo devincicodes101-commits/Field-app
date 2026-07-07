@@ -6,7 +6,6 @@ import type {
   JobPhoto,
   ExtraWorkRequest,
   Profile,
-  Contractor,
   ChecklistItem,
   Material,
   JobSiteCheck,
@@ -44,7 +43,7 @@ export default async function JobDetailPage({
     { data: messages },
     { data: photos },
     { data: extraWork },
-    { data: contractors },
+    { data: contractorProfiles },
     { data: checklistItems },
     { data: materials },
     { data: siteChecks },
@@ -68,8 +67,8 @@ export default async function JobDetailPage({
       .order("created_at", { ascending: false })
       .returns<ExtraWorkRequest[]>(),
     profile.role === "office"
-      ? supabase.from("contractors").select("user_id, company_name").order("company_name")
-      : Promise.resolve({ data: [] as Pick<Contractor, "user_id" | "company_name">[] }),
+      ? supabase.from("profiles").select("id, full_name, email").eq("role", "contractor").order("full_name")
+      : Promise.resolve({ data: [] as { id: string; full_name: string; email: string }[] }),
     supabase
       .from("job_checklist_items")
       .select("*")
@@ -90,6 +89,17 @@ export default async function JobDetailPage({
       .returns<JobSiteCheck[]>(),
   ]);
 
+  // Merge contractor accounts with their company names (if they've onboarded).
+  let contractors: { user_id: string; company_name: string }[] = [];
+  if (profile.role === "office") {
+    const { data: companies } = await supabase.from("contractors").select("user_id, company_name");
+    const companyMap = new Map((companies ?? []).map((c) => [c.user_id, c.company_name]));
+    contractors = (contractorProfiles ?? []).map((p) => ({
+      user_id: p.id,
+      company_name: companyMap.get(p.id) || p.full_name || p.email,
+    }));
+  }
+
   const photosWithUrls = await Promise.all(
     (photos ?? []).map(async (photo) => {
       const { data } = await supabase.storage
@@ -106,7 +116,7 @@ export default async function JobDetailPage({
       messages={messages ?? []}
       photos={photosWithUrls}
       extraWork={extraWork ?? []}
-      contractors={contractors ?? []}
+      contractors={contractors}
       checklistItems={checklistItems ?? []}
       materials={materials ?? []}
       siteChecks={siteChecks ?? []}
