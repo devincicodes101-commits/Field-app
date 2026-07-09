@@ -14,6 +14,7 @@ import {
   assignContractor,
   assignTeam,
   startJob,
+  setAssignmentType,
 } from "./actions";
 import { CompletionWizard } from "@/components/jobs/completion-wizard";
 import { ChecklistTab } from "@/components/jobs/checklist-tab";
@@ -220,6 +221,30 @@ export function JobDetail({
                 </Select>
               </div>
               <AssignTeamField jobId={job.id} currentTeam={job.assigned_team} />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Assignment type
+                </label>
+                <Select
+                  value={job.assignment_type ?? "direct"}
+                  onValueChange={async (v) => {
+                    const result = await setAssignmentType(job.id, v as "direct" | "auction");
+                    if (result && "error" in result) toast.error(result.error);
+                    else router.refresh();
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="direct">Direct assign</SelectItem>
+                    <SelectItem value="auction">Open auction</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(job.assignment_type === "auction") && (
+                  <p className="text-xs text-amber-500">Visible to contractors in Available Jobs</p>
+                )}
+              </div>
             </div>
           )}
 

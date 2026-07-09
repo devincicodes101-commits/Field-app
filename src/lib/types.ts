@@ -24,10 +24,13 @@ export type Profile = {
   updated_at: string;
 };
 
+export type CoverageType = "national" | "radius" | "postcode_list";
+
 export type Contractor = {
   id: string;
   user_id: string;
   company_name: string;
+  logo_url: string | null;
   address_line1: string;
   address_line2: string | null;
   city: string;
@@ -37,9 +40,14 @@ export type Contractor = {
   bank_account_number: string | null;
   vat_registered: boolean;
   vat_number: string | null;
+  coverage_type: CoverageType | null;
+  coverage_radius_miles: number | null;
+  coverage_postcodes: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type AssignmentType = "direct" | "auction";
 
 export type Job = {
   id: string;
@@ -52,6 +60,7 @@ export type Job = {
   client_access_token: string;
   contractor_id: string | null;
   assigned_team: string | null;
+  assignment_type: AssignmentType;
   status: JobStatus;
   scheduled_date: string | null;
   quote_accepted_at: string | null;

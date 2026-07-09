@@ -9,6 +9,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -39,6 +46,9 @@ export function OnboardingForm() {
       bank_account_number: "",
       vat_registered: false,
       vat_number: "",
+      coverage_type: "national",
+      coverage_radius_miles: null,
+      coverage_postcodes: null,
     },
   });
 
@@ -282,6 +292,80 @@ export function OnboardingForm() {
                       <FormLabel>VAT number</FormLabel>
                       <FormControl>
                         <Input {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Coverage area */}
+            <div className="border-t pt-4 space-y-4">
+              <p className="text-sm font-medium">Coverage area</p>
+              <FormField
+                control={form.control}
+                name="coverage_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How do you cover jobs?</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="national">National — anywhere in the UK</SelectItem>
+                        <SelectItem value="radius">Radius — within X miles of my postcode</SelectItem>
+                        <SelectItem value="postcode_list">Specific postcodes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("coverage_type") === "radius" && (
+                <FormField
+                  control={form.control}
+                  name="coverage_radius_miles"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Radius (miles)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="e.g. 25"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(e.target.value === "" ? null : Number(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {form.watch("coverage_type") === "postcode_list" && (
+                <FormField
+                  control={form.control}
+                  name="coverage_postcodes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Postcodes (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. SW1, EC1, W1, N1"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

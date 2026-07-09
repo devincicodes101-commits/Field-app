@@ -15,6 +15,7 @@ export default async function AvailableJobsPage() {
     .from("jobs")
     .select("*")
     .in("status", ["accepted", "scheduled"])
+    .eq("assignment_type", "auction")
     .is("assigned_team", null)
     .order("scheduled_date", { ascending: true, nullsFirst: false });
 

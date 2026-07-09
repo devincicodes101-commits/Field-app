@@ -221,6 +221,19 @@ export async function startJob(jobId: string) {
   revalidatePath(`/jobs/${jobId}`);
 }
 
+export async function setAssignmentType(jobId: string, type: "direct" | "auction") {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can change assignment type" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ assignment_type: type })
+    .eq("id", jobId);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/available-jobs");
+}
+
 export async function assignTeam(jobId: string, teamName: string | null) {
   const { supabase, profile } = await requireProfile();
   if (profile.role !== "office") return { error: "Only office can assign teams" };
