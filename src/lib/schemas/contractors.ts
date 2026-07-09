@@ -3,6 +3,7 @@ import { baseSelectSchema } from "./common";
 
 export const contractorInsertSchema = z.object({
   company_name: z.string().min(1, "Company name is required"),
+  logo_url: z.string().url().nullable().optional(),
   address_line1: z.string().min(1, "Address is required"),
   address_line2: z.string().nullable().optional(),
   city: z.string().min(1, "City is required"),

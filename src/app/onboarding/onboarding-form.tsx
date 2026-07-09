@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { contractorInsertSchema, type ContractorInsert } from "@/lib/schemas/contractors";
 import { completeOnboarding } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,11 +21,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 export function OnboardingForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ContractorInsert>({
     resolver: zodResolver(contractorInsertSchema),
     defaultValues: {
       company_name: "",
+      logo_url: null,
       address_line1: "",
       address_line2: "",
       city: "",
@@ -36,6 +41,45 @@ export function OnboardingForm() {
       vat_number: "",
     },
   });
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Logo must be under 2 MB.");
+      return;
+    }
+
+    setLogoUploading(true);
+    setError(null);
+
+    const supabase = createClient();
+    const ext = file.name.split(".").pop();
+    const fileName = `logos/${Date.now()}.${ext}`;
+
+    const { data, error: uploadError } = await supabase.storage
+      .from("contractor-assets")
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) {
+      setError(`Logo upload failed: ${uploadError.message}`);
+      setLogoUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("contractor-assets")
+      .getPublicUrl(data.path);
+
+    form.setValue("logo_url", urlData.publicUrl);
+    setLogoPreview(urlData.publicUrl);
+    setLogoUploading(false);
+  }
 
   async function onSubmit(values: ContractorInsert) {
     setSubmitting(true);
@@ -71,6 +115,43 @@ export function OnboardingForm() {
                 </FormItem>
               )}
             />
+
+            {/* Logo upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Company logo (optional)</label>
+              <div className="flex items-center gap-4">
+                {logoPreview ? (
+                  <img
+                    src={logoPreview}
+                    alt="Company logo"
+                    className="h-16 w-16 rounded-lg object-contain border"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-lg border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                    No logo
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={logoUploading}
+                    onClick={() => logoInputRef.current?.click()}
+                  >
+                    {logoUploading ? "Uploading..." : "Upload logo"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">PNG, JPG up to 2 MB</span>
+                </div>
+              </div>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoChange}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -211,7 +292,7 @@ export function OnboardingForm() {
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting || logoUploading}>
               {submitting ? "Saving..." : "Complete registration"}
             </Button>
           </form>
