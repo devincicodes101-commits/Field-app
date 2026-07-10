@@ -15,7 +15,7 @@ export const contractorInsertSchema = z.object({
   bank_account_number: z.string().nullable().optional(),
   vat_registered: z.boolean(),
   vat_number: z.string().nullable().optional(),
-  coverage_type: z.enum(COVERAGE_TYPES).default("national"),
+  coverage_type: z.enum(COVERAGE_TYPES),
   coverage_radius_miles: z.number().int().positive().nullable().optional(),
   coverage_postcodes: z.string().nullable().optional(),
 });
