@@ -4,6 +4,7 @@ import { JOB_STATUS_LABELS, type Job, type Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FieldWorkerTabs } from "@/components/dashboard/field-worker-tabs";
 import { LowRatingAlerts } from "@/components/dashboard/low-rating-alerts";
+import { settleEndedAuctions } from "@/lib/settle-auctions";
 
 /* ── Status tokens ── */
 const STATUS_DOT: Record<Job["status"], string> = {
@@ -177,6 +178,9 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+
+  // Award any auctions whose window has elapsed (office view triggers settlement too).
+  await settleEndedAuctions();
 
   const { data: profile } = await supabase
     .from("profiles").select("*").eq("id", user.id).single<Profile>();

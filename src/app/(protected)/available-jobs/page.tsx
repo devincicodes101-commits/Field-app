@@ -3,6 +3,7 @@ import type { Job, JobBid } from "@/lib/types";
 import { AvailableJobsClient } from "./client";
 import { redirect } from "next/navigation";
 import { extractPostcode, geocodePostcode, milesBetween } from "@/lib/geocode";
+import { settleEndedAuctions } from "@/lib/settle-auctions";
 
 function extractPostcodeArea(address: string): string {
   const match = address.match(/\b([A-Z]{1,2})\d/i);
@@ -16,6 +17,9 @@ export default async function AvailableJobsPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   if (!profile || profile.role === "office") redirect("/dashboard");
+
+  // Award any auctions whose 5-minute window has elapsed before showing the board.
+  await settleEndedAuctions();
 
   // Get contractor's coverage settings
   const { data: contractor } = await supabase

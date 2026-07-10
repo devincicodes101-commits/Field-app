@@ -53,3 +53,38 @@ export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; 
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+
+/** Outward postcode area (leading letters) from a free-text address, e.g. "…LS1 4AB" -> "LS". */
+export function extractPostcodeArea(address: string): string | null {
+  const m = address.match(/\b([A-Z]{1,2})\d/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+export type Coverage = {
+  coverage_type: string | null;
+  coverage_radius_miles: number | null;
+  coverage_postcodes: string | null;
+  postcode: string | null;
+};
+
+/** Whether a contractor's coverage area includes the job at this address. */
+export async function coverageCoversAddress(c: Coverage, address: string): Promise<boolean> {
+  const type = c.coverage_type ?? "national";
+  if (type === "national") return true;
+  if (type === "postcode_list") {
+    const area = extractPostcodeArea(address);
+    if (!area) return false;
+    const allowed = (c.coverage_postcodes ?? "")
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    return allowed.some((a) => area.startsWith(a) || a.startsWith(area));
+  }
+  // radius
+  if (!c.coverage_radius_miles || !c.postcode) return false;
+  const jobPc = extractPostcode(address);
+  if (!jobPc) return false;
+  const [center, loc] = await Promise.all([geocodePostcode(c.postcode), geocodePostcode(jobPc)]);
+  if (!center || !loc) return false;
+  return milesBetween(center, loc) <= c.coverage_radius_miles;
+}

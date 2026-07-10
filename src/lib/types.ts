@@ -64,6 +64,7 @@ export type Job = {
   contractor_percentage: number | null;
   auction_start_bid: number | null;
   auction_ends_at: string | null;
+  external_ref: string | null;
   status: JobStatus;
   scheduled_date: string | null;
   quote_accepted_at: string | null;
