@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Job, JobBid } from "@/lib/types";
 import { AvailableJobsClient } from "./client";
 import { redirect } from "next/navigation";
+import { extractPostcode, geocodePostcode, milesBetween } from "@/lib/geocode";
 
 function extractPostcodeArea(address: string): string {
   const match = address.match(/\b([A-Z]{1,2})\d/i);
@@ -19,7 +20,7 @@ export default async function AvailableJobsPage() {
   // Get contractor's coverage settings
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("coverage_type, coverage_radius_miles, coverage_postcodes")
+    .select("coverage_type, coverage_radius_miles, coverage_postcodes, postcode")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -48,8 +49,29 @@ export default async function AvailableJobsPage() {
       const area = extractPostcodeArea(j.address);
       return allowed.some((a: string) => area.startsWith(a) || a.startsWith(area));
     });
+  } else if (
+    contractor &&
+    contractor.coverage_type === "radius" &&
+    contractor.coverage_radius_miles &&
+    contractor.postcode
+  ) {
+    // Radius: keep jobs whose postcode is within N miles of the contractor's base.
+    const radius = contractor.coverage_radius_miles;
+    const center = await geocodePostcode(contractor.postcode);
+    if (center) {
+      const inRange = await Promise.all(
+        filteredJobs.map(async (j) => {
+          const pc = extractPostcode(j.address);
+          if (!pc) return false;
+          const loc = await geocodePostcode(pc);
+          return loc ? milesBetween(center, loc) <= radius : false;
+        })
+      );
+      filteredJobs = filteredJobs.filter((_, i) => inRange[i]);
+    }
+    // If the contractor's base can't be geocoded, leave jobs unfiltered rather than hide everything.
   }
-  // national or radius: show all (radius would need geocoding)
+  // national: show all
 
   const bidsByJob: Record<string, JobBid[]> = {};
   for (const bid of (bids ?? []) as JobBid[]) {
