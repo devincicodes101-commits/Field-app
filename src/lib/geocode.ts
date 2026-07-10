@@ -5,27 +5,15 @@ export function extractPostcode(address: string): string | null {
 }
 
 /**
- * Geocode a UK postcode to { lat, lng }. Uses getukaddress.com (getaddress.io) when
- * GETADDRESS_API_KEY is set; otherwise falls back to the free postcodes.io so radius
- * matching works out of the box. Returns null if the postcode can't be resolved.
+ * Geocode a UK postcode to { lat, lng } via the free postcodes.io.
+ * (getukaddress.com is an address-autocomplete API and returns no coordinates,
+ * so it can't be used for radius distance — postcodes.io provides lat/lng.)
+ * Returns null if the postcode can't be resolved.
  */
 export async function geocodePostcode(pc: string): Promise<{ lat: number; lng: number } | null> {
   const clean = pc.trim();
   if (!clean) return null;
-  const key = process.env.GETADDRESS_API_KEY;
   try {
-    if (key) {
-      const res = await fetch(
-        `https://api.getaddress.io/find/${encodeURIComponent(clean)}?api-key=${encodeURIComponent(key)}`,
-        { cache: "force-cache" }
-      );
-      if (res.ok) {
-        const d = await res.json();
-        if (typeof d.latitude === "number" && typeof d.longitude === "number") {
-          return { lat: d.latitude, lng: d.longitude };
-        }
-      }
-    }
     const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(clean)}`, {
       cache: "force-cache",
     });

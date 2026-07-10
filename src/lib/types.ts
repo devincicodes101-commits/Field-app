@@ -76,6 +76,16 @@ export type Job = {
   updated_at: string;
 };
 
+export type Notification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
 export type JobBid = {
   id: string;
   job_id: string;

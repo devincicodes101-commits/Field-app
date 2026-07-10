@@ -18,7 +18,7 @@ export async function settleEndedAuctions(): Promise<void> {
 
   const { data: jobs } = await supabase
     .from("jobs")
-    .select("id")
+    .select("id, title")
     .eq("assignment_type", "auction")
     .is("assigned_team", null)
     .not("auction_ends_at", "is", null)
@@ -36,10 +36,21 @@ export async function settleEndedAuctions(): Promise<void> {
       .maybeSingle();
     if (!top) continue; // no bids — leave for the office
 
-    await supabase
+    const { data: awarded } = await supabase
       .from("jobs")
       .update({ contractor_id: top.contractor_id, assigned_team: top.contractor_name })
       .eq("id", job.id)
-      .is("assigned_team", null); // guard against a concurrent award
+      .is("assigned_team", null) // guard against a concurrent award
+      .select("id");
+
+    // Only notify if this call is the one that actually awarded the job.
+    if (awarded && awarded.length > 0) {
+      await supabase.from("notifications").insert({
+        user_id: top.contractor_id,
+        title: "You won an auction",
+        body: `The job "${job.title}" has been assigned to you.`,
+        link: `/jobs/${job.id}`,
+      });
+    }
   }
 }

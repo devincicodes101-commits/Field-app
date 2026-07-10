@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./notification-bell";
 
 export function Topbar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
@@ -102,6 +103,7 @@ export function Topbar({ profile }: { profile: Profile }) {
 
         {/* Right */}
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <div className="hidden sm:flex flex-col items-end gap-0.5">
             <span className="text-sm font-semibold text-foreground leading-tight">
               {profile.full_name || profile.email}

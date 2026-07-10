@@ -12,6 +12,8 @@ import {
 } from "@/lib/schemas/jobs";
 import type { JobStatus } from "@/lib/types";
 import { sendQuoteEmailToClient, sendMessageNotificationToClient } from "@/lib/email";
+import { notify } from "@/lib/notify";
+import { coverageCoversAddress } from "@/lib/geocode";
 
 async function requireProfile() {
   const supabase = await createClient();
@@ -196,6 +198,15 @@ export async function assignContractor(jobId: string, contractorUserId: string |
     .update({ contractor_id: contractorUserId })
     .eq("id", jobId);
   if (error) return { error: error.message };
+
+  if (contractorUserId) {
+    const { data: job } = await supabase.from("jobs").select("title").eq("id", jobId).single();
+    await notify([contractorUserId], {
+      title: "New job assigned",
+      body: job?.title ? `You've been assigned "${job.title}".` : "You've been assigned a job.",
+      link: `/jobs/${jobId}`,
+    });
+  }
   revalidatePath(`/jobs/${jobId}`);
 }
 
@@ -259,6 +270,24 @@ export async function openAuction(jobId: string, startBid: number) {
     .update({ assignment_type: "auction", auction_start_bid: startBid, auction_ends_at: endsAt })
     .eq("id", jobId);
   if (error) return { error: error.message };
+
+  // Notify every contractor whose coverage area includes this job.
+  const { data: job } = await supabase.from("jobs").select("title, address").eq("id", jobId).single();
+  if (job) {
+    const { data: contractors } = await supabase
+      .from("contractors")
+      .select("user_id, coverage_type, coverage_radius_miles, coverage_postcodes, postcode");
+    const matches: string[] = [];
+    for (const c of contractors ?? []) {
+      if (await coverageCoversAddress(c, job.address)) matches.push(c.user_id);
+    }
+    await notify(matches, {
+      title: "New job up for auction",
+      body: `"${job.title}" is open for bidding (start £${startBid.toFixed(2)}).`,
+      link: "/available-jobs",
+    });
+  }
+
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/available-jobs");
 }
