@@ -221,13 +221,42 @@ export async function startJob(jobId: string) {
   revalidatePath(`/jobs/${jobId}`);
 }
 
-export async function setAssignmentType(jobId: string, type: "direct" | "auction") {
+export async function setAssignmentType(jobId: string, type: "operative" | "contractor" | "auction") {
   const { supabase, profile } = await requireProfile();
   if (profile.role !== "office") return { error: "Only office can change assignment type" };
 
   const { error } = await supabase
     .from("jobs")
     .update({ assignment_type: type })
+    .eq("id", jobId);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/available-jobs");
+}
+
+export async function setContractorPercentage(jobId: string, percentage: number) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can set contractor percentage" };
+  if (percentage < 0 || percentage > 100) return { error: "Percentage must be 0–100" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ contractor_percentage: percentage })
+    .eq("id", jobId);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function openAuction(jobId: string, startBid: number) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can open an auction" };
+  if (startBid <= 0) return { error: "Starting bid must be greater than zero" };
+
+  const endsAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ assignment_type: "auction", auction_start_bid: startBid, auction_ends_at: endsAt })
     .eq("id", jobId);
   if (error) return { error: error.message };
   revalidatePath(`/jobs/${jobId}`);

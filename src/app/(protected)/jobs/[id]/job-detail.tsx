@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,8 @@ import {
   assignTeam,
   startJob,
   setAssignmentType,
+  setContractorPercentage,
+  openAuction,
 } from "./actions";
 import { CompletionWizard } from "@/components/jobs/completion-wizard";
 import { ChecklistTab } from "@/components/jobs/checklist-tab";
@@ -27,6 +29,7 @@ import type {
   ExtraWorkRequest,
   Profile,
   JobStatus,
+  AssignmentType,
   ChecklistItem,
   Material,
   JobSiteCheck,
@@ -170,79 +173,97 @@ export function JobDetail({
 
           {/* ─── Office controls ─── */}
           {isOffice && (
-            <div className="mt-5 pt-4 border-t border-border grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Status
-                </label>
-                <Select
-                  value={job.status}
-                  onValueChange={async (v) => {
-                    const result = await updateJobStatus(job.id, v as JobStatus);
-                    if (result && "error" in result) toast.error(result.error);
-                    else router.refresh();
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {JOB_STATUS_LABELS[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="mt-5 pt-4 border-t border-border space-y-4">
+              {/* Status row */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
+                  <Select
+                    value={job.status}
+                    onValueChange={async (v) => {
+                      const result = await updateJobStatus(job.id, v as JobStatus);
+                      if (result && "error" in result) toast.error(result.error);
+                      else router.refresh();
+                    }}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{JOB_STATUS_LABELS[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <AssignTeamField jobId={job.id} currentTeam={job.assigned_team} />
               </div>
-              <div className="space-y-1.5">
+
+              {/* 3-way assignment */}
+              <div className="space-y-3 rounded-xl border border-border p-4 bg-muted/30">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Contractor
+                  Who handles this job?
                 </label>
-                <Select
-                  value={job.contractor_id ?? "none"}
-                  onValueChange={async (v) => {
-                    const result = await assignContractor(job.id, v === "none" ? null : v);
-                    if (result && "error" in result) toast.error(result.error);
-                    else router.refresh();
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
-                    {contractors.map((c) => (
-                      <SelectItem key={c.user_id} value={c.user_id}>
-                        {c.company_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <AssignTeamField jobId={job.id} currentTeam={job.assigned_team} />
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Assignment type
-                </label>
-                <Select
-                  value={job.assignment_type ?? "direct"}
-                  onValueChange={async (v) => {
-                    const result = await setAssignmentType(job.id, v as "direct" | "auction");
-                    if (result && "error" in result) toast.error(result.error);
-                    else router.refresh();
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="direct">Direct assign</SelectItem>
-                    <SelectItem value="auction">Open auction</SelectItem>
-                  </SelectContent>
-                </Select>
-                {(job.assignment_type === "auction") && (
-                  <p className="text-xs text-amber-500">Visible to contractors in Available Jobs</p>
+                <div className="flex gap-2">
+                  {(["operative", "contractor", "auction"] as AssignmentType[]).map((type) => (
+                    <button
+                      key={type}
+                      onClick={async () => {
+                        const result = await setAssignmentType(job.id, type);
+                        if (result && "error" in result) toast.error(result.error);
+                        else router.refresh();
+                      }}
+                      className={cn(
+                        "flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors",
+                        job.assignment_type === type
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card border-border text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {type === "operative" ? "Operative" : type === "contractor" ? "Contractor" : "Auction"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Operative — just show the team field hint */}
+                {job.assignment_type === "operative" && (
+                  <p className="text-xs text-muted-foreground">
+                    Use the Team field above to assign to an internal operative.
+                  </p>
+                )}
+
+                {/* Contractor — contractor picker + % split */}
+                {job.assignment_type === "contractor" && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Contractor</label>
+                      <Select
+                        value={job.contractor_id ?? "none"}
+                        onValueChange={async (v) => {
+                          const result = await assignContractor(job.id, v === "none" ? null : v);
+                          if (result && "error" in result) toast.error(result.error);
+                          else router.refresh();
+                        }}
+                      >
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select contractor" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Unassigned</SelectItem>
+                          {contractors.map((c) => (
+                            <SelectItem key={c.user_id} value={c.user_id}>{c.company_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <ContractorPercentageField jobId={job.id} current={job.contractor_percentage} />
+                  </div>
+                )}
+
+                {/* Auction — starting bid + open button OR live countdown */}
+                {job.assignment_type === "auction" && (
+                  <AuctionPanel
+                    jobId={job.id}
+                    startBid={job.auction_start_bid}
+                    endsAt={job.auction_ends_at}
+                    onRefresh={() => router.refresh()}
+                  />
                 )}
               </div>
             </div>
@@ -494,6 +515,139 @@ function AssignTeamField({ jobId, currentTeam }: { jobId: string; currentTeam: s
           {saving ? "…" : "Set"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ─── Contractor percentage field ─── */
+
+function ContractorPercentageField({ jobId, current }: { jobId: string; current: number | null }) {
+  const router = useRouter();
+  const [value, setValue] = useState(current !== null ? String(current) : "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const num = Number(value);
+    if (isNaN(num)) return;
+    setSaving(true);
+    const result = await setContractorPercentage(jobId, num);
+    setSaving(false);
+    if (result && "error" in result) toast.error(result.error);
+    else router.refresh();
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-muted-foreground">% of value paid to contractor</label>
+      <div className="flex gap-1.5">
+        <Input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          placeholder="e.g. 70"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="text-sm"
+        />
+        <Button size="sm" variant="outline" onClick={handleSave} disabled={saving} className="shrink-0">
+          {saving ? "…" : "Set"}
+        </Button>
+      </div>
+      {current !== null && (
+        <p className="text-xs text-muted-foreground">
+          Contractor keeps {current}%, company keeps {100 - current}%
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ─── Auction panel ─── */
+
+function AuctionPanel({
+  jobId,
+  startBid,
+  endsAt,
+  onRefresh,
+}: {
+  jobId: string;
+  startBid: number | null;
+  endsAt: string | null;
+  onRefresh: () => void;
+}) {
+  const [bidInput, setBidInput] = useState(startBid !== null ? String(startBid) : "");
+  const [opening, setOpening] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!endsAt) return;
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000));
+      setSecondsLeft(diff);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  const isLive = endsAt !== null && new Date(endsAt) > new Date();
+  const isEnded = endsAt !== null && new Date(endsAt) <= new Date();
+
+  async function handleOpen() {
+    const num = Number(bidInput);
+    if (!num || num <= 0) { toast.error("Enter a valid starting bid"); return; }
+    setOpening(true);
+    const result = await openAuction(jobId, num);
+    setOpening(false);
+    if (result && "error" in result) toast.error(result.error);
+    else { toast.success("Auction opened — 5 minute countdown started"); onRefresh(); }
+  }
+
+  function fmtTime(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  }
+
+  if (isLive && secondsLeft !== null) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+          <span className="text-sm font-semibold text-amber-500">Auction live</span>
+          <span className="text-lg font-black text-amber-500 tabular-nums">{fmtTime(secondsLeft)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Starting bid: £{startBid?.toFixed(2)}. Contractors in matching areas are bidding now.</p>
+      </div>
+    );
+  }
+
+  if (isEnded) {
+    return (
+      <div className="rounded-lg bg-muted/50 border border-border px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">Auction ended</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Check the Bids tab to see the winner.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1.5">
+        <Input
+          type="number"
+          min={1}
+          step={1}
+          placeholder="Starting bid (£)"
+          value={bidInput}
+          onChange={(e) => setBidInput(e.target.value)}
+          className="text-sm"
+        />
+        <Button size="sm" onClick={handleOpen} disabled={opening} className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white">
+          {opening ? "Opening…" : "Open auction"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Sets a 5-minute bidding window. All matching contractors get notified.</p>
     </div>
   );
 }

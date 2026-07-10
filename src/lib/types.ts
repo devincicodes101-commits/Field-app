@@ -47,7 +47,7 @@ export type Contractor = {
   updated_at: string;
 };
 
-export type AssignmentType = "direct" | "auction";
+export type AssignmentType = "operative" | "contractor" | "auction";
 
 export type Job = {
   id: string;
@@ -61,6 +61,9 @@ export type Job = {
   contractor_id: string | null;
   assigned_team: string | null;
   assignment_type: AssignmentType;
+  contractor_percentage: number | null;
+  auction_start_bid: number | null;
+  auction_ends_at: string | null;
   status: JobStatus;
   scheduled_date: string | null;
   quote_accepted_at: string | null;
@@ -70,6 +73,15 @@ export type Job = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type JobBid = {
+  id: string;
+  job_id: string;
+  contractor_id: string;
+  contractor_name: string;
+  amount: number;
+  created_at: string;
 };
 
 export type JobMessage = {
