@@ -27,9 +27,21 @@ export default async function ContractorsPage() {
 
   const { data: contractors } = await supabase
     .from("contractors")
-    .select("*, profiles!contractors_user_id_fkey(full_name, email, phone)")
+    .select("*")
     .order("company_name")
-    .returns<(Contractor & { profiles: Pick<Profile, "full_name" | "email" | "phone"> })[]>();
+    .returns<Contractor[]>();
+
+  // contractors.user_id and profiles.id both reference auth.users, so there's no
+  // direct FK to embed on — fetch the linked profiles separately and map them.
+  const userIds = (contractors ?? []).map((c) => c.user_id);
+  const { data: profileRows } = userIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email, phone")
+        .in("id", userIds)
+        .returns<Pick<Profile, "id" | "full_name" | "email" | "phone">[]>()
+    : { data: [] as Pick<Profile, "id" | "full_name" | "email" | "phone">[] };
+  const profileById = new Map((profileRows ?? []).map((p) => [p.id, p]));
 
   return (
     <div className="space-y-6">
@@ -48,8 +60,8 @@ export default async function ContractorsPage() {
             <TableRow key={c.id}>
               <TableCell className="font-medium">{c.company_name}</TableCell>
               <TableCell>
-                <div>{c.profiles?.full_name}</div>
-                <div className="text-sm text-muted-foreground">{c.profiles?.email}</div>
+                <div>{profileById.get(c.user_id)?.full_name}</div>
+                <div className="text-sm text-muted-foreground">{profileById.get(c.user_id)?.email}</div>
               </TableCell>
               <TableCell>
                 {c.address_line1}, {c.city} {c.postcode}
