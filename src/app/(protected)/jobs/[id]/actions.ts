@@ -333,7 +333,7 @@ export async function submitCompletion(payload: {
     .insert({
       job_id: payload.jobId,
       net_amount: payload.netAmount,
-      vat_rate: payload.vatRate,
+      vat_rate: payload.vatRate / 100, // column is a fraction (numeric(5,4)): 20% -> 0.20
       vat_amount: vatAmount,
       total_amount: totalAmount,
       status: "draft",
