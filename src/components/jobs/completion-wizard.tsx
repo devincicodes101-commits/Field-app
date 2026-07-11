@@ -157,11 +157,9 @@ export function CompletionWizard({ job }: { job: Job }) {
   async function handleSubmit() {
     setSubmitting(true);
     try {
+      // Storage uploads use the browser session; the submit action authenticates
+      // server-side, so no redundant client-side auth guard here.
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
 
       const photoStoragePaths: string[] = [];
       for (const photo of photos) {
