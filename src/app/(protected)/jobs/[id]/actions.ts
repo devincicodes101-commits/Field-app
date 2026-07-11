@@ -11,7 +11,7 @@ import {
   type RescheduleInsert,
 } from "@/lib/schemas/jobs";
 import type { JobStatus } from "@/lib/types";
-import { sendQuoteEmailToClient, sendMessageNotificationToClient } from "@/lib/email";
+import { sendQuoteEmailToClient, sendInvoiceEmailToClient, sendMessageNotificationToClient } from "@/lib/email";
 import { notify } from "@/lib/notify";
 import { coverageCoversAddress } from "@/lib/geocode";
 
@@ -399,8 +399,64 @@ export async function submitCompletion(payload: {
 
   if (jobError) return { error: jobError.message };
 
+  // Email the client their invoice (fire-and-forget — don't fail completion on email)
+  const { data: jobInfo } = await supabase
+    .from("jobs")
+    .select("title, address, client_name, client_email")
+    .eq("id", payload.jobId)
+    .single();
+  if (jobInfo?.client_email) {
+    sendInvoiceEmailToClient({
+      clientName: jobInfo.client_name,
+      clientEmail: jobInfo.client_email,
+      jobTitle: jobInfo.title,
+      address: jobInfo.address,
+      invoiceNumber: invoice.invoice_number as string,
+      netAmount: payload.netAmount,
+      vatAmount,
+      totalAmount,
+    }).catch(() => null);
+  }
+
   revalidatePath(`/jobs/${payload.jobId}`);
   return { invoiceNumber: invoice.invoice_number as string };
+}
+
+export async function sendInvoiceEmail(jobId: string) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "office") return { error: "Only office can send invoices" };
+
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("title, address, client_name, client_email")
+    .eq("id", jobId)
+    .single();
+  if (!job) return { error: "Job not found" };
+  if (!job.client_email) return { error: "This job has no client email address" };
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("invoice_number, net_amount, vat_amount, total_amount")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!invoice) return { error: "No invoice exists for this job yet" };
+
+  try {
+    await sendInvoiceEmailToClient({
+      clientName: job.client_name,
+      clientEmail: job.client_email,
+      jobTitle: job.title,
+      address: job.address,
+      invoiceNumber: invoice.invoice_number as string,
+      netAmount: Number(invoice.net_amount),
+      vatAmount: Number(invoice.vat_amount),
+      totalAmount: Number(invoice.total_amount),
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send invoice" };
+  }
 }
 
 // Default (unconfirmed by Paul): requires >=1 completion photo, enforced again

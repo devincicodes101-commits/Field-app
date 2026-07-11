@@ -10,6 +10,7 @@ import {
   decideExtraWork,
   rescheduleJob,
   sendQuoteEmail,
+  sendInvoiceEmail,
   updateJobStatus,
   assignContractor,
   assignTeam,
@@ -278,6 +279,9 @@ export function JobDetail({
               {job.client_email && (
                 <SendQuoteEmailButton jobId={job.id} clientEmail={job.client_email} />
               )}
+              {job.client_email && job.status === "completed" && (
+                <SendInvoiceEmailButton jobId={job.id} />
+              )}
             </div>
           )}
 
@@ -476,6 +480,39 @@ function SendQuoteEmailButton({ jobId, clientEmail }: { jobId: string; clientEma
       </Button>
       <span className="text-xs text-muted-foreground truncate">{clientEmail}</span>
     </div>
+  );
+}
+
+function SendInvoiceEmailButton({ jobId }: { jobId: string }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleSend() {
+    setSending(true);
+    const result = await sendInvoiceEmail(jobId);
+    setSending(false);
+    if (result && "error" in result) {
+      toast.error(result.error);
+    } else {
+      setSent(true);
+      toast.success("Invoice emailed to client");
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handleSend}
+      disabled={sending || sent}
+      className={cn("gap-2 font-semibold transition-all", sent && "border-emerald-500/40 text-emerald-400")}
+    >
+      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      {sending ? "Sending…" : sent ? "Invoice sent" : "Send invoice to client"}
+    </Button>
   );
 }
 
