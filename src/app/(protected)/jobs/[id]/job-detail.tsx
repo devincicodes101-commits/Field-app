@@ -270,6 +270,20 @@ export function JobDetail({
             </div>
           )}
 
+          {/* ─── Invoicing note ─── */}
+          <div className="mt-4 rounded-lg bg-emerald-500/8 border border-emerald-500/20 px-4 py-2.5 flex items-center gap-2.5">
+            <svg className="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div className="text-xs text-emerald-700 dark:text-emerald-400">
+              <span className="font-semibold">Invoicing: </span>
+              {job.assignment_type === "contractor" && job.contractor_percentage && job.total_value
+                ? `Company invoices client £${Number(job.total_value).toFixed(2)}. Contractor receives ${job.contractor_percentage}% (£${(Number(job.total_value) * job.contractor_percentage / 100).toFixed(2)}).`
+                : "Company invoices the client directly for the full job value."}
+            </div>
+          </div>
+
           {/* ─── Office action bar ─── */}
           {isOffice && (
             <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-3">

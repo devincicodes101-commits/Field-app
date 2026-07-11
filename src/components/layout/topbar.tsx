@@ -7,7 +7,7 @@ import type { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 
-export function Topbar({ profile }: { profile: Profile }) {
+export function Topbar({ profile, notificationsBell }: { profile: Profile; notificationsBell?: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -32,6 +32,7 @@ export function Topbar({ profile }: { profile: Profile }) {
             { href: "/attendance",     label: "Attendance" },
             { href: "/tracking",       label: "Tracking" },
             { href: "/leaderboard",    label: "Leaderboard" },
+            { href: "/notifications",  label: "Notifications" },
           ];
 
   async function handleSignOut() {
@@ -115,6 +116,7 @@ export function Topbar({ profile }: { profile: Profile }) {
               {roleLabel[profile.role] ?? profile.role}
             </span>
           </div>
+          {notificationsBell}
           <button
             onClick={handleSignOut}
             className="text-xs font-semibold text-muted-foreground hover:text-foreground border border-border hover:border-primary/40 rounded-lg px-3 py-1.5 transition-colors"

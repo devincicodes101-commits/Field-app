@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { contractorInsertSchema, type ContractorInsert } from "@/lib/schemas/contractors";
 import { completeOnboarding } from "./actions";
 import { createClient } from "@/lib/supabase/client";
+import { PostcodeAreaSelect } from "@/components/postcode-area-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -359,12 +360,11 @@ export function OnboardingForm() {
                   name="coverage_postcodes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Postcodes (comma-separated)</FormLabel>
+                      <FormLabel>Postcode areas you cover</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g. SW1, EC1, W1, N1"
-                          {...field}
-                          value={field.value ?? ""}
+                        <PostcodeAreaSelect
+                          value={field.value ?? null}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />
