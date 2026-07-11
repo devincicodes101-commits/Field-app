@@ -46,7 +46,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
         </a>
         <button
           onClick={() => window.print()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md"
+          className="px-4 py-2 bg-[#0f172a] text-white rounded-lg text-sm font-bold hover:bg-[#1e293b] shadow-md"
         >
           🖨 Print
         </button>
@@ -54,23 +54,21 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
 
       {/* Certificate */}
       <div className="max-w-2xl mx-auto px-8 py-12 print:py-6 print:px-6">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b-2 border-indigo-600 pb-6 mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <span className="text-xl font-black text-slate-900">Field Service</span>
+        {/* Branded header */}
+        <div className="bg-[#0f172a] rounded-xl px-6 py-5 flex items-start justify-between mb-8 print:rounded-none">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center justify-center bg-[#ea580c] text-white font-extrabold text-xs px-3 py-2.5 rounded-lg leading-none">
+              AUK
+            </span>
+            <div>
+              <span className="block text-white font-extrabold text-[15px] leading-tight">Asbestos UK Teams</span>
+              <span className="block text-slate-400 text-xs">Certificate of Completion</span>
             </div>
-            <p className="text-sm text-slate-500">Certificate of Completion</p>
           </div>
           {invoice && (
             <div className="text-right">
-              <p className="text-xs text-slate-400 font-medium">Invoice</p>
-              <p className="text-lg font-black text-indigo-600">{invoice.invoice_number}</p>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Invoice</p>
+              <p className="text-lg font-black text-[#ea580c]">{invoice.invoice_number}</p>
             </div>
           )}
         </div>
@@ -115,9 +113,11 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
 
           {/* Invoice totals */}
           {invoice && (
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-5">
-              <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3">Invoice Summary</h3>
-              <div className="space-y-1.5 text-sm">
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="bg-slate-50 px-5 py-2.5">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice Summary</h3>
+              </div>
+              <div className="p-5 space-y-1.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Net amount</span>
                   <span className="font-semibold text-slate-900">£{invoice.net_amount.toFixed(2)}</span>
@@ -126,10 +126,10 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
                   <span className="text-slate-600">VAT ({(invoice.vat_rate * 100).toFixed(0)}%)</span>
                   <span className="font-semibold text-slate-900">£{invoice.vat_amount.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between border-t border-indigo-200 pt-1.5 mt-1.5">
-                  <span className="font-bold text-slate-900">Total</span>
-                  <span className="font-black text-indigo-700 text-base">£{invoice.total_amount.toFixed(2)}</span>
-                </div>
+              </div>
+              <div className="flex justify-between items-center bg-[#ea580c] px-5 py-3">
+                <span className="font-bold text-white">Total</span>
+                <span className="font-black text-white text-lg">£{invoice.total_amount.toFixed(2)}</span>
               </div>
             </div>
           )}
@@ -157,7 +157,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
           {completion?.feedback && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Customer Feedback</p>
-              <p className="text-sm text-slate-700 italic">"{completion.feedback}"</p>
+              <p className="text-sm text-slate-700 italic">&ldquo;{completion.feedback}&rdquo;</p>
             </div>
           )}
 
@@ -179,7 +179,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
           <p className="text-xs text-slate-400">
             This certificate confirms that the above work has been completed to the satisfaction of the client.
           </p>
-          <p className="text-xs text-slate-300 mt-1">Generated by Field Service · {new Date().toLocaleDateString("en-GB")}</p>
+          <p className="text-xs text-slate-300 mt-1">Asbestos UK Teams · {new Date().toLocaleDateString("en-GB")}</p>
         </div>
       </div>
     </div>

@@ -343,17 +343,20 @@ export function CompletionWizard({ job }: { job: Job }) {
                 <div className="space-y-4">
                   <SectionHeading>Invoice Preview</SectionHeading>
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div
-                      className="px-6 py-5 text-white"
-                      style={{ background: "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)" }}
-                    >
-                      <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1">
-                        Tax Invoice
-                      </p>
-                      <p className="font-bold text-xl">{job.title}</p>
-                      <p className="text-indigo-200 text-sm mt-0.5">{job.address}</p>
+                    <div className="px-6 py-5 bg-[#0f172a] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center bg-[#ea580c] text-white font-extrabold text-[11px] px-2.5 py-2 rounded-md leading-none">
+                          AUK
+                        </span>
+                        <div>
+                          <p className="text-white font-extrabold text-sm leading-tight">Asbestos UK Teams</p>
+                          <p className="text-slate-400 text-[11px]">{job.address}</p>
+                        </div>
+                      </div>
+                      <p className="text-slate-300 text-xs font-bold uppercase tracking-[0.18em]">Tax Invoice</p>
                     </div>
                     <div className="px-6 py-5 space-y-3">
+                      <InfoRow label="Job" value={job.title} />
                       <InfoRow label="Client" value={job.client_name} />
                       <InfoRow
                         label="Date"
@@ -368,13 +371,11 @@ export function CompletionWizard({ job }: { job: Job }) {
                           <span className="text-slate-500">VAT ({vatRate}%)</span>
                           <span className="text-slate-800">£{vatAmount.toFixed(2)}</span>
                         </div>
-                        <div className="border-t border-slate-100 pt-2.5 flex justify-between items-center">
-                          <span className="font-bold text-slate-900 text-base">Total</span>
-                          <span className="font-extrabold text-2xl text-indigo-600">
-                            £{totalAmount.toFixed(2)}
-                          </span>
-                        </div>
                       </div>
+                    </div>
+                    <div className="flex justify-between items-center bg-[#ea580c] px-6 py-3.5">
+                      <span className="font-bold text-white">Total</span>
+                      <span className="font-extrabold text-xl text-white">£{totalAmount.toFixed(2)}</span>
                     </div>
                   </div>
                   <p className="text-xs text-slate-400 text-center">
