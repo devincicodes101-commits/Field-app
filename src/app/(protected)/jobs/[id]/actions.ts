@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
   messageInsertSchema,
   extraWorkInsertSchema,
@@ -328,7 +328,11 @@ export async function submitCompletion(payload: {
   const vatAmount = payload.netAmount * (payload.vatRate / 100);
   const totalAmount = payload.netAmount + vatAmount;
 
-  const { data: invoice, error: invoiceError } = await supabase
+  // The invoice is a system-generated financial record. Create it with the service
+  // role so the invoices RLS (office-only insert) doesn't block the field worker
+  // who is completing the job.
+  const admin = createServiceClient();
+  const { data: invoice, error: invoiceError } = await admin
     .from("invoices")
     .insert({
       job_id: payload.jobId,
