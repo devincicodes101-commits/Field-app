@@ -50,7 +50,7 @@ export default async function AvailableJobsPage() {
       .map((p: string) => p.trim().toUpperCase())
       .filter(Boolean);
     filteredJobs = filteredJobs.filter((j) => {
-      const area = extractPostcodeArea(j.address);
+      const area = extractPostcodeArea(j.postcode || j.address);
       return allowed.some((a: string) => area.startsWith(a) || a.startsWith(area));
     });
   } else if (
@@ -65,7 +65,7 @@ export default async function AvailableJobsPage() {
     if (center) {
       const inRange = await Promise.all(
         filteredJobs.map(async (j) => {
-          const pc = extractPostcode(j.address);
+          const pc = j.postcode || extractPostcode(j.address);
           if (!pc) return false;
           const loc = await geocodePostcode(pc);
           return loc ? milesBetween(center, loc) <= radius : false;

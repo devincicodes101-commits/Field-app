@@ -272,14 +272,14 @@ export async function openAuction(jobId: string, startBid: number) {
   if (error) return { error: error.message };
 
   // Notify every contractor whose coverage area includes this job.
-  const { data: job } = await supabase.from("jobs").select("title, address").eq("id", jobId).single();
+  const { data: job } = await supabase.from("jobs").select("title, address, postcode").eq("id", jobId).single();
   if (job) {
     const { data: contractors } = await supabase
       .from("contractors")
       .select("user_id, coverage_type, coverage_radius_miles, coverage_postcodes, postcode");
     const matches: string[] = [];
     for (const c of contractors ?? []) {
-      if (await coverageCoversAddress(c, job.address)) matches.push(c.user_id);
+      if (await coverageCoversAddress(c, job.postcode || job.address)) matches.push(c.user_id);
     }
     await notify(matches, {
       title: "New job up for auction",

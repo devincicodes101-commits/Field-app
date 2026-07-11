@@ -36,7 +36,7 @@ export async function placeBid(jobId: string, amount: number) {
   // Check auction is still live
   const { data: job } = await supabase
     .from("jobs")
-    .select("address, auction_ends_at, auction_start_bid")
+    .select("address, postcode, auction_ends_at, auction_start_bid")
     .eq("id", jobId)
     .single();
 
@@ -51,7 +51,7 @@ export async function placeBid(jobId: string, amount: number) {
     .select("coverage_type, coverage_radius_miles, coverage_postcodes, postcode")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (coverage && !(await coverageCoversAddress(coverage, job.address))) {
+  if (coverage && !(await coverageCoversAddress(coverage, job.postcode || job.address))) {
     return { error: "This job is outside your coverage area" };
   }
 

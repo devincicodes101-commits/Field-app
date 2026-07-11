@@ -54,6 +54,7 @@ export type Job = {
   title: string;
   description: string | null;
   address: string;
+  postcode: string | null;
   client_name: string;
   client_email: string | null;
   client_phone: string | null;

@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
     title: String(body.title),
     description: body.description ? String(body.description) : null,
     address: String(body.address),
+    postcode: body.postcode ? String(body.postcode) : null,
     client_name: String(body.client_name),
     client_email: body.client_email ? String(body.client_email) : null,
     client_phone: body.client_phone ? String(body.client_phone) : null,
