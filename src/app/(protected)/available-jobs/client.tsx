@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { placeBid } from "./actions";
+import { placeBid, selfAssignJob } from "./actions";
 import type { Job, JobBid } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -148,15 +148,52 @@ function BidPanel({
   );
 }
 
+function TakeJobPanel({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const [taking, setTaking] = useState(false);
+
+  async function handle() {
+    setTaking(true);
+    const result = await selfAssignJob(jobId);
+    setTaking(false);
+    if (result && "error" in result) {
+      toast.error(result.error);
+    } else {
+      toast.success("Job taken — check your diary!");
+      router.refresh();
+    }
+  }
+
+  return (
+    <div className="border-t border-slate-100 p-4">
+      <button
+        onClick={handle}
+        disabled={taking}
+        className={cn(
+          "w-full py-2.5 rounded-lg text-sm font-bold transition-all",
+          taking
+            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+            : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200"
+        )}
+      >
+        {taking ? "Taking job…" : "Take this job"}
+      </button>
+    </div>
+  );
+}
+
 export function AvailableJobsClient({
   jobs,
   bidsByJob,
   currentUserId,
+  userRole,
 }: {
   jobs: Job[];
   bidsByJob: Record<string, JobBid[]>;
   currentUserId: string;
+  userRole: string;
 }) {
+  const isOperative = userRole === "operative";
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -169,11 +206,13 @@ export function AvailableJobsClient({
 
       {/* Info banner */}
       <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 p-4 flex items-center gap-4 shadow-md text-white">
-        <div className="text-3xl">🏆</div>
+        <div className="text-3xl">{isOperative ? "✋" : "🏆"}</div>
         <div>
-          <p className="font-bold">Place the highest bid to win</p>
+          <p className="font-bold">{isOperative ? "Self-assign open jobs" : "Place the highest bid to win"}</p>
           <p className="text-sm text-indigo-100">
-            Each auction runs for 5 minutes. The highest bidder wins the job and gets paid their bid amount.
+            {isOperative
+              ? "Jobs open for auction in your area appear here. Click Take this job to assign it to yourself."
+              : "Each auction runs for 5 minutes. The highest bidder wins the job and gets paid their bid amount."}
           </p>
         </div>
       </div>
@@ -217,7 +256,9 @@ export function AvailableJobsClient({
                   </div>
                 )}
               </div>
-              <BidPanel job={job} bids={bids} currentUserId={currentUserId} />
+              {isOperative
+                ? <TakeJobPanel jobId={job.id} />
+                : <BidPanel job={job} bids={bids} currentUserId={currentUserId} />}
             </div>
           );
         })}

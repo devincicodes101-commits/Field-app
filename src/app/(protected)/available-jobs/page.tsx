@@ -88,6 +88,7 @@ export default async function AvailableJobsPage() {
       jobs={filteredJobs}
       bidsByJob={bidsByJob}
       currentUserId={user.id}
+      userRole={profile.role}
     />
   );
 }

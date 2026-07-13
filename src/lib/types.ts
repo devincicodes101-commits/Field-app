@@ -49,6 +49,8 @@ export type Contractor = {
 
 export type AssignmentType = "operative" | "contractor" | "auction";
 
+export type ContractorAcceptance = "pending" | "accepted" | "rejected";
+
 export type Job = {
   id: string;
   title: string;
@@ -63,9 +65,11 @@ export type Job = {
   assigned_team: string | null;
   assignment_type: AssignmentType;
   contractor_percentage: number | null;
+  contractor_acceptance: ContractorAcceptance | null;
   auction_start_bid: number | null;
   auction_ends_at: string | null;
   external_ref: string | null;
+  waste_notes: string | null;
   status: JobStatus;
   scheduled_date: string | null;
   quote_accepted_at: string | null;

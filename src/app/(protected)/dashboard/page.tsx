@@ -1,29 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { JOB_STATUS_LABELS, type Job, type Profile } from "@/lib/types";
+import { type Job, type Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FieldWorkerTabs } from "@/components/dashboard/field-worker-tabs";
 import { LowRatingAlerts } from "@/components/dashboard/low-rating-alerts";
+import { JobSearchTable } from "@/components/dashboard/job-search-table";
 import { settleEndedAuctions } from "@/lib/settle-auctions";
-
-/* ── Status tokens ── */
-const STATUS_DOT: Record<Job["status"], string> = {
-  quote_sent:  "bg-sky-400",
-  accepted:    "bg-teal-400",
-  scheduled:   "bg-amber-400",
-  in_progress: "bg-primary shadow-[0_0_8px_oklch(0.56_0.24_266/0.7)]",
-  completed:   "bg-emerald-400",
-  cancelled:   "bg-rose-400",
-};
-
-const STATUS_TEXT: Record<Job["status"], string> = {
-  quote_sent:  "text-sky-400",
-  accepted:    "text-teal-400",
-  scheduled:   "text-amber-400",
-  in_progress: "text-primary",
-  completed:   "text-emerald-400",
-  cancelled:   "text-rose-400",
-};
 
 /* ── Helpers ── */
 // Business day is the UK working day, regardless of where the office user sits.
@@ -41,17 +23,6 @@ function londonDate(value: string | number | Date) {
 function isToday(dateStr: string | null) {
   if (!dateStr) return false;
   return londonDate(dateStr) === londonDate(new Date());
-}
-
-function formatScheduled(value: string | null) {
-  if (!value) return "—";
-  const d = new Date(value);
-  const time = d.toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-  if (isToday(value)) {
-    return `Today · ${time}`;
-  }
-  return d.toLocaleDateString("en-GB", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }) +
-    ` · ${time}`;
 }
 
 function greet(name: string) {
@@ -88,57 +59,6 @@ function StatCard({
       </p>
       {sub && <p className="text-[11px] text-muted-foreground mt-2">{sub}</p>}
     </div>
-  );
-}
-
-/* ── Job row ── */
-function JobRow({ job, showClient }: { job: Job; showClient: boolean }) {
-  const today = isToday(job.scheduled_date);
-
-  return (
-    <Link
-      href={`/jobs/${job.id}`}
-      className="group flex items-center gap-4 px-4 py-3.5 hover:bg-secondary/50 transition-colors border-b border-border last:border-b-0"
-    >
-      <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[job.status])} />
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-          {job.title}
-          {today && (
-            <span className="ml-2 text-[10px] font-bold text-primary bg-primary/10 rounded px-1.5 py-0.5 uppercase tracking-wide">
-              Today
-            </span>
-          )}
-        </p>
-        {showClient && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{job.client_name}</p>
-        )}
-      </div>
-
-      <p className="hidden md:block text-xs text-muted-foreground truncate max-w-[170px] shrink-0">
-        {job.address}
-      </p>
-
-      <p className={cn(
-        "hidden sm:block text-xs shrink-0 w-36 text-right",
-        today ? "text-primary font-semibold" : "text-muted-foreground"
-      )}>
-        {formatScheduled(job.scheduled_date)}
-      </p>
-
-      {job.total_value != null && (
-        <p className="hidden lg:block text-xs font-semibold text-foreground shrink-0 w-24 text-right">
-          £{job.total_value.toLocaleString("en-GB", { minimumFractionDigits: 2 })}
-        </p>
-      )}
-
-      <span className={cn("shrink-0 text-xs font-semibold w-20 text-right", STATUS_TEXT[job.status])}>
-        {JOB_STATUS_LABELS[job.status]}
-      </span>
-
-      <ChevronIcon className="w-4 h-4 text-border group-hover:text-primary shrink-0 transition-colors" />
-    </Link>
   );
 }
 
@@ -298,24 +218,7 @@ export default async function DashboardPage() {
       {isOffice && (
         <>
           {!list.length && <EmptyState isOffice />}
-          {list.length > 0 && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              {/* Column headings */}
-              <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-secondary/30">
-                <span className="w-2 shrink-0" />
-                <span className="flex-1 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Job</span>
-                <span className="hidden md:block text-[11px] font-bold text-muted-foreground uppercase tracking-widest max-w-[170px] shrink-0">Address</span>
-                <span className="hidden sm:block text-[11px] font-bold text-muted-foreground uppercase tracking-widest w-36 text-right shrink-0">Scheduled</span>
-                <span className="hidden lg:block text-[11px] font-bold text-muted-foreground uppercase tracking-widest w-24 text-right shrink-0">Value</span>
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest w-20 text-right shrink-0">Status</span>
-                <span className="w-4 shrink-0" />
-              </div>
-
-              {list.map(job => (
-                <JobRow key={job.id} job={job} showClient={isOffice} />
-              ))}
-            </div>
-          )}
+          {list.length > 0 && <JobSearchTable jobs={list} />}
         </>
       )}
     </div>
@@ -330,10 +233,3 @@ function PlusIcon() {
   );
 }
 
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}

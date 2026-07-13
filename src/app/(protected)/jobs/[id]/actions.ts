@@ -292,6 +292,54 @@ export async function openAuction(jobId: string, startBid: number) {
   revalidatePath("/available-jobs");
 }
 
+export async function acceptJobAssignment(jobId: string) {
+  const { supabase, profile } = await requireProfile();
+  if (profile.role !== "contractor") return { error: "Only contractors can accept job assignments" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ contractor_acceptance: "accepted" })
+    .eq("id", jobId)
+    .eq("contractor_id", profile.id);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function rejectJobAssignment(jobId: string) {
+  const { supabase, user, profile } = await requireProfile();
+  if (profile.role !== "contractor") return { error: "Only contractors can reject job assignments" };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ contractor_acceptance: "rejected", contractor_id: null })
+    .eq("id", jobId)
+    .eq("contractor_id", user.id);
+  if (error) return { error: error.message };
+
+  const { data: job } = await supabase.from("jobs").select("title").eq("id", jobId).single();
+  const { data: officeUsers } = await supabase.from("profiles").select("id").eq("role", "office");
+  if (officeUsers?.length) {
+    await notify(officeUsers.map((u) => u.id), {
+      title: "Job rejected by contractor",
+      body: `"${job?.title ?? "A job"}" was rejected by ${profile.full_name || "the contractor"}. Please reassign.`,
+      link: `/jobs/${jobId}`,
+    });
+  }
+
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+export async function saveWasteNotes(jobId: string, notes: string) {
+  const { supabase } = await requireProfile();
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({ waste_notes: notes.trim() || null })
+    .eq("id", jobId);
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${jobId}`);
+}
+
 export async function assignTeam(jobId: string, teamName: string | null) {
   const { supabase, profile } = await requireProfile();
   if (profile.role !== "office") return { error: "Only office can assign teams" };

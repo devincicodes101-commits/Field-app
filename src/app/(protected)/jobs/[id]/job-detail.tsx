@@ -18,6 +18,9 @@ import {
   setAssignmentType,
   setContractorPercentage,
   openAuction,
+  acceptJobAssignment,
+  rejectJobAssignment,
+  saveWasteNotes,
 } from "./actions";
 import { CompletionWizard } from "@/components/jobs/completion-wizard";
 import { ChecklistTab } from "@/components/jobs/checklist-tab";
@@ -34,6 +37,7 @@ import type {
   ChecklistItem,
   Material,
   JobSiteCheck,
+  ContractorAcceptance,
 } from "@/lib/types";
 import { JOB_STATUS_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -299,8 +303,21 @@ export function JobDetail({
             </div>
           )}
 
+          {/* ─── Contractor accept / reject banner ─── */}
+          {isAssignedContractor && job.contractor_acceptance === "pending" && !["completed", "cancelled"].includes(job.status) && (
+            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/8 p-4 space-y-3">
+              <p className="text-sm font-semibold text-amber-500">
+                You have been assigned this job — do you accept?
+              </p>
+              <div className="flex gap-2">
+                <AcceptJobButton jobId={job.id} />
+                <RejectJobButton jobId={job.id} />
+              </div>
+            </div>
+          )}
+
           {/* ─── Field worker action buttons ─── */}
-          {isAssignedWorker && (
+          {isAssignedWorker && job.contractor_acceptance !== "pending" && (
             <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-2">
               {job.status === "scheduled" && (
                 <StartJobButton jobId={job.id} />
@@ -360,6 +377,9 @@ export function JobDetail({
           <TabsTrigger value="extra-work" className="rounded-lg text-sm">
             Extra work
           </TabsTrigger>
+          <TabsTrigger value="waste" className="rounded-lg text-sm">
+            Waste
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="messages" className="mt-3">
@@ -393,6 +413,14 @@ export function JobDetail({
             requests={extraWork}
             canRequest={isAssignedContractor}
             canDecide={isOffice}
+          />
+        </TabsContent>
+
+        <TabsContent value="waste" className="mt-3">
+          <WasteNotesPanel
+            jobId={job.id}
+            currentNotes={job.waste_notes}
+            canEdit={isAssignedWorker || isOffice}
           />
         </TabsContent>
       </Tabs>
@@ -1010,6 +1038,115 @@ function ExtraWorkPanel({
           >
             {submitting ? "Submitting…" : "Submit request"}
           </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Accept / Reject job assignment buttons ─── */
+
+function AcceptJobButton({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handle() {
+    setLoading(true);
+    const result = await acceptJobAssignment(jobId);
+    setLoading(false);
+    if (result?.error) toast.error(result.error);
+    else { toast.success("Job accepted!"); router.refresh(); }
+  }
+
+  return (
+    <Button
+      onClick={handle}
+      disabled={loading}
+      size="sm"
+      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+    >
+      {loading ? "Accepting…" : "Accept"}
+    </Button>
+  );
+}
+
+function RejectJobButton({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handle() {
+    setLoading(true);
+    const result = await rejectJobAssignment(jobId);
+    setLoading(false);
+    if (result?.error) toast.error(result.error);
+    else { toast.success("Job rejected — the office has been notified."); router.refresh(); }
+  }
+
+  return (
+    <Button
+      onClick={handle}
+      disabled={loading}
+      size="sm"
+      variant="outline"
+      className="border-rose-500/40 text-rose-500 hover:bg-rose-500/10 font-semibold"
+    >
+      {loading ? "Rejecting…" : "Reject"}
+    </Button>
+  );
+}
+
+/* ─── Waste notes panel ─── */
+
+function WasteNotesPanel({
+  jobId,
+  currentNotes,
+  canEdit,
+}: {
+  jobId: string;
+  currentNotes: string | null;
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const [notes, setNotes] = useState(currentNotes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const result = await saveWasteNotes(jobId, notes);
+    setSaving(false);
+    if (result?.error) toast.error(result.error);
+    else { toast.success("Waste notes saved"); router.refresh(); }
+  }
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-foreground text-sm mb-1">Waste documentation</h3>
+        <p className="text-xs text-muted-foreground">
+          Record any waste produced on site — type, quantity, disposal method, and carrier details.
+        </p>
+      </div>
+
+      {canEdit ? (
+        <>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. 2 bags general waste, disposed via licensed carrier (Biffa). Carrier licence: ABC123."
+            rows={5}
+            className="resize-none"
+          />
+          <Button
+            onClick={handleSave}
+            disabled={saving || notes === (currentNotes ?? "")}
+            size="sm"
+          >
+            {saving ? "Saving…" : "Save waste notes"}
+          </Button>
+        </>
+      ) : (
+        <div className="rounded-lg bg-secondary/50 border border-border p-4 text-sm text-muted-foreground">
+          {currentNotes || "No waste notes recorded yet."}
         </div>
       )}
     </div>

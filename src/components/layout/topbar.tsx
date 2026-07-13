@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "./notification-bell";
-
 export function Topbar({ profile, notificationsBell }: { profile: Profile; notificationsBell?: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,6 +31,7 @@ export function Topbar({ profile, notificationsBell }: { profile: Profile; notif
             { href: "/tracking",       label: "Tracking" },
             { href: "/leaderboard",    label: "Leaderboard" },
             { href: "/notifications",  label: "Notifications" },
+            { href: "/profile",        label: "Profile" },
           ];
 
   async function handleSignOut() {
@@ -104,7 +103,6 @@ export function Topbar({ profile, notificationsBell }: { profile: Profile; notif
 
         {/* Right */}
         <div className="flex items-center gap-3">
-          <NotificationBell />
           <div className="hidden sm:flex flex-col items-end gap-0.5">
             <span className="text-sm font-semibold text-foreground leading-tight">
               {profile.full_name || profile.email}
