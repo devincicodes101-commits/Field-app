@@ -143,7 +143,7 @@ export default function RegisterPage() {
                   required
                   autoComplete="name"
                   placeholder="John Smith"
-                  className="pl-9 bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
+                  className="pl-9 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
                 />
               </div>
             </div>
@@ -163,7 +163,7 @@ export default function RegisterPage() {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className="pl-9 bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
+                  className="pl-9 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
                 />
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function RegisterPage() {
                   minLength={8}
                   autoComplete="new-password"
                   placeholder="Min. 8 characters"
-                  className="pl-9 bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
+                  className="pl-9 bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-indigo-400/20 h-11"
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">Use at least 8 characters</p>
